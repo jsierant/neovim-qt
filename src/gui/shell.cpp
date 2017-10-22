@@ -22,7 +22,8 @@ Shell::Shell(NeovimConnector *nvim, QWidget *parent)
 	m_cursor_color(Qt::white), m_cursor_pos(0,0), m_insertMode(false),
 	m_resizing(false),
 	m_mouse_wheel_delta_fraction(0, 0),
-	m_neovimBusy(false)
+	m_neovimBusy(false),
+  m_popupmenu(this)
 {
 	setAttribute(Qt::WA_KeyCompression, false);
 
@@ -420,6 +421,16 @@ void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 	} else if (name == "busy_stop"){
 		handleBusy(false);
 	} else if (name == "set_icon") {
+	} else if (name == "popupmenu_show") {
+		qDebug() << "JS items: " << opargs.at(0);
+    m_popupmenu.show(convertItems(opargs.at(0).toList()),
+        opargs.at(1).toInt(),
+        opargs.at(2).toUInt(),
+        opargs.at(3).toUInt());
+	} else if (name == "popupmenu_select") {
+    m_popupmenu.select(opargs.at(0).toInt());
+	} else if (name == "popupmenu_hide") {
+    m_popupmenu.hide();
 	} else {
 		qDebug() << "Received unknown redraw notification" << name << opargs;
 	}

@@ -13,7 +13,7 @@
 #include "msgpackiodevice.h"
 #include "util.h"
 #include "msgpackrequest.h"
-
+#include <iostream>
 namespace NeovimQt {
 
 /**
@@ -765,6 +765,8 @@ void MsgpackIODevice::send(const QVariant& var)
 		break;
 	case QMetaType::QVariantMap:
 		{
+      std::cerr << "packing map" << std::endl;
+		qWarning() << "pack map";
 		const QVariantMap& m = var.toMap();
 		msgpack_pack_map(&m_pk, m.size());
 		QMapIterator<QString,QVariant> it(m);

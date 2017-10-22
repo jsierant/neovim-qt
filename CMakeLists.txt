@@ -7,11 +7,13 @@ if(NOT EXISTS ${NEOVIM_EXEC})
 	set(NEOVIM_EXEC nvim)
 endif()
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
-		"${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -std=c++11 -Wfatal-errors")
-endif()
-
+# if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
+# 		"${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+# 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -std=c++14 -Wfatal-errors")
+# endif()
+add_compile_options(
+  "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wno-unused-parameter;-std=c++14;-Wfatal-errors>"
+)
 option(USE_GCOV "Enable gcov support" OFF)
 if(USE_GCOV)
 	message(STATUS "Enabling coverage")

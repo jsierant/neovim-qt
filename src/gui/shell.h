@@ -11,6 +11,7 @@
 #include <QList>
 #include "neovimconnector.h"
 #include "shellwidget/shellwidget.h"
+#include "popupmenu.h"
 
 namespace NeovimQt {
 
@@ -130,6 +131,8 @@ private:
 
 	// Properties
 	bool m_neovimBusy;
+
+  PopupMenu m_popupmenu;
 };
 
 } // Namespace

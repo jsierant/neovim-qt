@@ -93,14 +93,17 @@ QString NeovimConnector::errorString()
 MsgpackRequest* NeovimConnector::attachUi(int64_t width, int64_t height)
 {
 	// FIXME: this should be in class Neovim
-	MsgpackRequest *r = m_dev->startRequestUnchecked("ui_attach", 3);
+	MsgpackRequest *r = m_dev->startRequestUnchecked("nvim_ui_attach", 3);
 	connect(r, &MsgpackRequest::timeout,
 			this, &NeovimConnector::fatalTimeout);
 	r->setTimeout(m_timeout);
 
 	m_dev->send(width);
 	m_dev->send(height);
-	m_dev->send(true);
+  QVariantMap options;
+  options["ext_popupmenu"] = true;
+  options["rgb"] = true;
+  m_dev->send(options);
 	return r;
 }
 
