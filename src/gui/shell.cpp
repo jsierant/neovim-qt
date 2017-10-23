@@ -23,7 +23,7 @@ Shell::Shell(NeovimConnector *nvim, QWidget *parent)
 	m_resizing(false),
 	m_mouse_wheel_delta_fraction(0, 0),
 	m_neovimBusy(false),
-  m_popupmenu(this)
+  m_popupmenu(this, [this]{ return cellSize(); })
 {
 	setAttribute(Qt::WA_KeyCompression, false);
 

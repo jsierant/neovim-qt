@@ -18,9 +18,11 @@ class PopupMenu {
     };
     using Idx = int;
     using Items = QVector<Item>;
+    using GetCellSize = std::function<QSize()>;
 
-    PopupMenu(QWidget* parent)
-      : widget(new QTableWidget(parent)) {
+    PopupMenu(QWidget* parent, GetCellSize cellSizeGetter)
+      : widget(new QTableWidget(parent)),
+        getCellSize(cellSizeGetter) {
         widget->setColumnCount(3);
         widget->verticalHeader()->hide();
         widget->horizontalHeader()->hide();
@@ -41,15 +43,13 @@ class PopupMenu {
       }
     void show(Items items,
         Idx selected,
-        std::uint32_t raw,
+        std::uint32_t row,
         std::uint32_t col) {
       std::cerr << "popupmenu_show" << std::endl;
       widget->setRowCount(items.size());
 
-		int(float64(col)*editor.font.truewidth)-popupItems[0].kindLable.Width()-8,
-		(row+1)*editor.font.lineHeight,
-
-      widget->move();
+      auto cellSize = getCellSize();
+      widget->move(col*cellSize.width(), (row+1)*cellSize.height());
 
       std::uint32_t idx = 0;
       for(auto const& item: items) {
@@ -71,7 +71,8 @@ class PopupMenu {
       widget->setItem(row, 1, new QTableWidgetItem(item.kind));
       widget->setItem(row, 2, new QTableWidgetItem(item.menu));
     }
-    std::unique_ptr<QTableWidget> widget;
+    QTableWidget* widget;
+    GetCellSize getCellSize;
 };
 
 inline PopupMenu::Item convertItem(QVariantList const& from) {
