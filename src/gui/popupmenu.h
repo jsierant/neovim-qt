@@ -6,8 +6,50 @@
 #include <QHeaderView>
 #include <iostream>
 #include <memory>
+#include <map>
+
+// supported kinds
+// 'Text', 'Method', 'Function', 'Constructor', 'Field', 'Variable', 'Class',
+// 'Interface', 'Module', 'Property', 'Unit', 'Value', 'Enum', 'Keyword',
+// 'Snippet', 'Color', 'File', 'Reference'
 
 namespace NeovimQt {
+
+inline QTableWidgetItem* getKindItem(QString const& kind) {
+  if (kind.isEmpty()) {
+    return new QTableWidgetItem("un");
+  }
+  static const std::map<QString, std::pair<QString, QColor>> abbr = {
+    { "Text", {"txt", QColor(0x07, 0x66, 0x78)}},
+    { "Method", {"mth", QColor(0x79, 0x74, 0x0e)}},
+    { "Function", {"fun", QColor(0x00, 0xa7, 0xaf)}},
+    { "Constructor", {"ctr", QColor(50, 100, 50)}},
+    { "Field", {"fld", QColor(0xaf, 0x3a, 0x03)}},
+    { "Variable", {"var", QColor(50, 100, 50)}},
+    { "Class", {"cls", QColor(0x42, 0x7b, 0x58)}},
+    { "Interface", {"ifc", QColor(50, 100, 50)}},
+    { "Module", {"mod", QColor(50, 100, 50)}},
+    { "Property", {"pro", QColor(50, 100, 50)}},
+    { "Unit", {"unit", QColor(50, 100, 50)}},
+    { "Value", {"val", QColor(50, 100, 50)}},
+    { "Enum", {"enum", QColor(50, 100, 50)}},
+    { "Keyword", {"kwd", QColor(0xdd, 0x6f, 0x48)}},
+    { "Snippet", {"snp", QColor(50, 100, 50)}},
+    { "Color", {"col", QColor(50, 100, 50)}},
+    { "File", {"file", QColor(50, 100, 50)}},
+    { "Reference", {"ref", QColor(50, 100, 50)}}
+  };
+
+  auto match = abbr.find(kind);
+  if(match == abbr.end()) {
+    auto* item = new QTableWidgetItem(kind);
+    item->setBackground(QBrush(QColor(200,0,0)));
+    return item;
+  }
+  auto* item = new QTableWidgetItem(match->second.first);
+  item->setBackground(QBrush(match->second.second));
+  return item;
+}
 
 class PopupMenu {
   public:
@@ -31,7 +73,7 @@ class PopupMenu {
         widget->setEditTriggers(QAbstractItemView::NoEditTriggers);
         widget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         widget->setSelectionMode(QAbstractItemView::SingleSelection);
-        widget->setShowGrid(false);
+        widget->setShowGrid(true);
 //         widget->setWindowFlag(Qt::SubWindow, true);
         widget->setTabKeyNavigation(false);
         widget->setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
@@ -40,6 +82,7 @@ class PopupMenu {
         widget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
         widget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
         widget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        widget->setStyleSheet("color: #fdf4c1; background-color: #393939; selection-background-color: #4a4a4a");
       }
     void show(Items items,
         Idx selected,
@@ -67,8 +110,8 @@ class PopupMenu {
     }
   private:
     void addItem(std::uint32_t row, Item const& item) {
-      widget->setItem(row, 0, new QTableWidgetItem(item.word));
-      widget->setItem(row, 1, new QTableWidgetItem(item.kind));
+      widget->setItem(row, 0, getKindItem(item.kind));
+      widget->setItem(row, 1, new QTableWidgetItem(QString(' ') + item.word));
       widget->setItem(row, 2, new QTableWidgetItem(item.menu));
     }
     QTableWidget* widget;
