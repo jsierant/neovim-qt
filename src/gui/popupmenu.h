@@ -4,6 +4,7 @@
 #include <QTableWidget>
 #include <QString>
 #include <QHeaderView>
+#include <QScrollBar>
 #include <iostream>
 #include <memory>
 
@@ -38,9 +39,18 @@ class PopupMenu {
         widget->hide();
         widget->setContentsMargins(0, 0, 0, 0);
         widget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+
         widget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
         widget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
         widget->setFocusPolicy(Qt::NoFocus);
+        widget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Expanding);
+        QHeaderView* hdr = widget->horizontalHeader();
+        hdr->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        QScrollBar* sb = widget->verticalScrollBar();
+        sb->setContentsMargins(10,0,0,0);
+        sb->setMaximumWidth(10);
       }
     void show(Items items,
         Idx selected,
@@ -57,6 +67,7 @@ class PopupMenu {
         addItem(idx++, item);
       }
       select(selected);
+      widget->setMaximumHeight(std::min(10, items.size())*widget->rowHeight(0));
       widget->show();
     }
     void select(Idx newselected) {
@@ -67,6 +78,8 @@ class PopupMenu {
       selected = newselected;
       if(selected >= 0) {
         setSelection(true);
+        widget->scrollToItem(widget->item(selected, 0),
+                             QAbstractItemView::PositionAtTop);
       }
     }
     void hide() {
