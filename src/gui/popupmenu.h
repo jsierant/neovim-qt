@@ -40,6 +40,7 @@ class PopupMenu {
         widget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
         widget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
         widget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        widget->setFocusPolicy(Qt::NoFocus);
       }
     void show(Items items,
         Idx selected,
@@ -55,10 +56,18 @@ class PopupMenu {
       for(auto const& item: items) {
         addItem(idx++, item);
       }
+      select(selected);
       widget->show();
     }
-    void select(Idx selected) {
+    void select(Idx newselected) {
       std::cerr << "popupmenu_select" << std::endl;
+      if(widget->isVisible() && selected >= 0) {
+        setSelection(false);
+      }
+      selected = newselected;
+      if(selected >= 0) {
+        setSelection(true);
+      }
     }
     void hide() {
       std::cerr << "popupmenu_hide" << std::endl;
@@ -71,8 +80,14 @@ class PopupMenu {
       widget->setItem(row, 1, new QTableWidgetItem(item.kind));
       widget->setItem(row, 2, new QTableWidgetItem(item.menu));
     }
+    void setSelection(bool state) {
+      widget->item(selected, 0)->setSelected(state);
+      widget->item(selected, 1)->setSelected(state);
+      widget->item(selected, 2)->setSelected(state);
+    }
     QTableWidget* widget;
     GetCellSize getCellSize;
+    int selected;
 };
 
 inline PopupMenu::Item convertItem(QVariantList const& from) {
