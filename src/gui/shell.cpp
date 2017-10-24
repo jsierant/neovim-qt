@@ -422,7 +422,6 @@ void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 		handleBusy(false);
 	} else if (name == "set_icon") {
 	} else if (name == "popupmenu_show") {
-		qDebug() << "JS items: " << opargs.at(0);
     m_popupmenu.show(convertItems(opargs.at(0).toList()),
         opargs.at(1).toInt(),
         opargs.at(2).toUInt(),

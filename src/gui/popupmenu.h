@@ -128,7 +128,6 @@ class PopupMenu {
       widget->show();
     }
     void select(Idx newselected) {
-      std::cerr << "popupmenu_select" << std::endl;
       if(widget->isVisible() && selected >= 0) {
         setSelection(false);
       }
@@ -139,7 +138,6 @@ class PopupMenu {
       }
     }
     void hide() {
-      std::cerr << "popupmenu_hide" << std::endl;
       widget->hide();
       widget->clearContents();
     }
