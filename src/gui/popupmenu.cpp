@@ -103,10 +103,13 @@ public:
     shadow->setOffset(0, 2);
     setGraphicsEffect(shadow);
   }
+
   QSize sizeHint() const override {
     auto sh = QTableWidget::sizeHint();
-    static const std::uint32_t scrollbarWidth = 8;
-    sh.setWidth(sh.width() + scrollbarWidth);
+    if (static_cast<std::uint32_t>(rowCount()) > PopupMenu::visibleRowCount) {
+      static const std::uint32_t scrollbarWidth = 8;
+      sh.setWidth(sh.width() + scrollbarWidth);
+    }
     return sh;
   }
 
@@ -114,6 +117,7 @@ public:
 
 }
 
+const std::uint32_t PopupMenu::visibleRowCount = 15;
 
 PopupMenu::PopupMenu(QWidget* parent,
     GetCellSize cellSizeGetter)
@@ -186,9 +190,8 @@ void PopupMenu::showPositionedWindow(std::uint32_t row, std::uint32_t col) {
 }
 
 void PopupMenu::setWindowHeight(std::uint32_t items) {
-  static const std::uint32_t maxrows = 15;
   static const std::uint32_t bordersize = 3;
-  widget->setMaximumHeight(std::min(maxrows, items)*widget->rowHeight(0) + bordersize);
+  widget->setMaximumHeight(std::min(visibleRowCount, items)*widget->rowHeight(0) + bordersize);
 }
 
 PopupMenu::Items PopupMenu::convertItems(QVariantList const& from) {
