@@ -134,12 +134,12 @@ PopupMenu::PopupMenu(QWidget* parent,
   }
 
 void PopupMenu::show(Items items,
-    Idx selected,
+    Idx selectIdx,
     std::uint32_t row,
     std::uint32_t col) {
   if(items.isEmpty()) { return; }
   auto added = addItems(items);
-  select(selected);
+  select(selectIdx);
   setWindowHeight(added);
   showPositionedWindow(row, col);
 }
