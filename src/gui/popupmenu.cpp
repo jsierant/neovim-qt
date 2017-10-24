@@ -63,40 +63,33 @@ PopupMenu::Item convertItem(QVariantList const& from) {
   return item;
 }
 
-}
+class PopupMenuTableWidget
+  : public QTableWidget {
 
+public:
+  PopupMenuTableWidget(QWidget* parent)
+    : QTableWidget(parent) {
+    verticalHeader()->hide();
+    horizontalHeader()->hide();
+    setSortingEnabled(false);
+    setSelectionBehavior(QAbstractItemView::SelectRows);
+    setEditTriggers(QAbstractItemView::NoEditTriggers);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setSelectionMode(QAbstractItemView::SingleSelection);
+    setShowGrid(true);
+    setTabKeyNavigation(false);
+    setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+    setContentsMargins(0, 0, 0, 0);
+    setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 
-PopupMenu::PopupMenu(QWidget* parent,
-    GetCellSize cellSizeGetter)
-  : widget(new QTableWidget(parent)),
-    getCellSize(cellSizeGetter) {
-    widget->setColumnCount(3);
-    widget->verticalHeader()->hide();
-    widget->horizontalHeader()->hide();
-    widget->setSortingEnabled(false);
-    widget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    widget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    widget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    widget->setSelectionMode(QAbstractItemView::SingleSelection);
-    widget->setShowGrid(true);
-    widget->setTabKeyNavigation(false);
-    widget->setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
-    widget->hide();
-    widget->setContentsMargins(0, 0, 0, 0);
-    widget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
-
-    widget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    widget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    widget->setFocusPolicy(Qt::NoFocus);
-    widget->setStyleSheet("color: #fdf4c1;"
+    horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    setFocusPolicy(Qt::NoFocus);
+    setStyleSheet("color: #fdf4c1;"
         " background-color: #393939;"
         " selection-background-color: #4a4a4a;");
-    widget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Expanding);
-    QHeaderView* hdr = widget->horizontalHeader();
-    hdr->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    QScrollBar* sb = widget->verticalScrollBar();
+    setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    QScrollBar* sb = verticalScrollBar();
     sb->setStyleSheet(
       "QScrollBar:vertical{margin: 0 0 0 0; width: 8px; background: #000000}"
       "QScrollBar::add-line:vertical{background: none; border:none; color:none}"
@@ -104,11 +97,36 @@ PopupMenu::PopupMenu(QWidget* parent,
       "QScrollBar::handle:vertical{background-color: #555555}"
       "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{background: none}");
 
-    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(widget);
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(this);
     shadow->setBlurRadius(20);
     shadow->setColor(QColor(0, 0, 0, 255));
     shadow->setOffset(0, 2);
-    widget->setGraphicsEffect(shadow);
+    setGraphicsEffect(shadow);
+  }
+  QSize sizeHint() const override {
+    auto sh = QTableWidget::sizeHint();
+    static const std::uint32_t scrollbarWidth = 8;
+    sh.setWidth(sh.width() + scrollbarWidth);
+    return sh;
+  }
+
+};
+
+}
+
+
+PopupMenu::PopupMenu(QWidget* parent,
+    GetCellSize cellSizeGetter)
+  : widget(new PopupMenuTableWidget(parent)),
+    getCellSize(cellSizeGetter) {
+
+    widget->hide();
+    widget->setColumnCount(3);
+
+    QHeaderView* hdr = widget->horizontalHeader();
+    hdr->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
   }
 
 void PopupMenu::show(Items items,
@@ -141,7 +159,7 @@ void PopupMenu::hide() {
 void PopupMenu::addItem(std::uint32_t row, Item const& item) {
   widget->setItem(row, 0, getKindItem(item.kind));
   widget->setItem(row, 1, new QTableWidgetItem(QString(' ') + item.word));
-  widget->setItem(row, 2, new QTableWidgetItem(item.menu));
+  widget->setItem(row, 2, new QTableWidgetItem(item.menu.trimmed()));
 }
 
 std::uint32_t PopupMenu::addItems(Items const& items) {
