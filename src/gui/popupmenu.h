@@ -6,8 +6,6 @@
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QGraphicsDropShadowEffect>
-#include <iostream>
-#include <memory>
 #include <map>
 
 // supported kinds
@@ -113,7 +111,6 @@ class PopupMenu {
         Idx selected,
         std::uint32_t row,
         std::uint32_t col) {
-      std::cerr << "popupmenu_show" << std::endl;
       widget->setRowCount(items.size());
 
       auto cellSize = getCellSize();
