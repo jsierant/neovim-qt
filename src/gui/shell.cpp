@@ -135,6 +135,7 @@ void Shell::setAttached(bool attached)
 	if (attached) {
 		updateWindowId();
 		m_nvim->neovimObject()->vim_set_var("GuiFont", fontDesc());
+
 		if (isWindow()) {
 			updateGuiWindowState(windowState());
 		}
@@ -541,7 +542,9 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
 		} else if (guiEvName == "Close" && args.size() == 1) {
 			qDebug() << "Neovim requested a GUI close";
 			emit neovimGuiCloseRequest();
-		}
+		} else if (guiEvName == "PopupMenuConfig" && args.size() == 3) {
+      m_popupmenu.updateConfig(args[1], args[2]);
+    }
 		return;
 	} else if (name != "redraw") {
 		return;

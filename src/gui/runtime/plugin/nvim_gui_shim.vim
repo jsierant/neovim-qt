@@ -81,3 +81,7 @@ function GuiDrop(...)
 		doautocmd BufEnter
 	endif
 endfunction
+
+function GuiConfigPopupMenu(menu_colors, kind_config)
+  call rpcnotify(0, 'Gui', 'PopupMenuConfig', a:menu_colors, a:kind_config)
+endfunction

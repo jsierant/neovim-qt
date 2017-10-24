@@ -196,6 +196,10 @@ void PopupMenu::setWindowHeight(std::uint32_t items) {
   widget->setMaximumHeight(std::min(visibleRowCount, items)*widget->rowHeight(0) + bordersize);
 }
 
+void PopupMenu::updateConfig(QVariant const& colors, QVariant const& kind_config) {
+  qDebug() << "JJJJJJJJJJJJJJJJJJ updateConfig: {colors: " << colors << ", kindconfig: " << kind_config << "}";
+}
+
 PopupMenu::Items PopupMenu::convertItems(QVariantList const& from) {
   PopupMenu::Items items;
   for(auto const& item: from) {

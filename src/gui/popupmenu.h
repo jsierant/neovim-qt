@@ -38,6 +38,8 @@ public:
   PopupMenu(QWidget* parent,
       GetCellSize cellSizeGetter);
 
+  void updateConfig(QVariant const& colors, QVariant const& kind_config);
+
   void show(Items items,
       Idx selected,
       std::uint32_t row,
