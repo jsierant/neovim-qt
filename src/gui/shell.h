@@ -99,6 +99,9 @@ private slots:
         void setAttached(bool attached=true);
 
 private:
+  void handlePopupMenuShow(QVariantList const&);
+  void handlePopupMenuSelect(QVariantList const&);
+
 	bool m_attached;
 
 	NeovimConnector *m_nvim;

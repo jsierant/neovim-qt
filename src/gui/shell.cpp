@@ -335,6 +335,32 @@ void Shell::handleSetScrollRegion(const QVariantList& opargs)
 				QPoint(right+1, bot+1));
 }
 
+
+void Shell::handlePopupMenuShow(QVariantList const& opargs) {
+  try {
+    if(opargs.size() == 4) {
+      m_popupmenu.show(
+          PopupMenu::convertItems(
+            PopupMenu::variantVal<QVariantList>(opargs.at(0))),
+          PopupMenu::variantVal<int>(opargs.at(1)),
+          PopupMenu::variantVal<std::uint32_t>(opargs.at(2)),
+          PopupMenu::variantVal<std::uint32_t>(opargs.at(3)));
+      return;
+    }
+    qWarning() << "invalid number of args for popupmenu show";
+  }
+  catch (PopupMenu::ConversionError const& e) {
+    qWarning() << "failed to load params for popupmenu show, what: " << e.what();
+  }
+}
+
+void Shell::handlePopupMenuSelect(QVariantList const& opargs) {
+  if(opargs.size() == 1 && opargs[0].canConvert<int>()) {
+    return m_popupmenu.select(opargs[0].value<int>());
+  }
+  qWarning() << "invalid arguments for popupmenu_show";
+}
+
 void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 {
 	if (name == "update_fg") {
@@ -422,12 +448,9 @@ void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 		handleBusy(false);
 	} else if (name == "set_icon") {
 	} else if (name == "popupmenu_show") {
-    m_popupmenu.show(convertItems(opargs.at(0).toList()),
-        opargs.at(1).toInt(),
-        opargs.at(2).toUInt(),
-        opargs.at(3).toUInt());
+    return handlePopupMenuShow(opargs);
 	} else if (name == "popupmenu_select") {
-    m_popupmenu.select(opargs.at(0).toInt());
+    return handlePopupMenuSelect(opargs);
 	} else if (name == "popupmenu_hide") {
     m_popupmenu.hide();
 	} else {
