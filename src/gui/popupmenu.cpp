@@ -48,7 +48,7 @@ inline QTableWidgetItem* getKindItem(QString const& kind) {
   }
   auto* item = new QTableWidgetItem(match->second.first);
   item->setBackground(QBrush(match->second.second));
-  item->setTextAlignment(Qt::AlignHCenter);
+  item->setTextAlignment(Qt::AlignHCenter|Qt::AlignBottom);
   return item;
 }
 
@@ -100,21 +100,26 @@ public:
       "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{background: none}");
 
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(20);
+    shadow->setBlurRadius(10);
     shadow->setColor(QColor(0, 0, 0, 255));
-    shadow->setOffset(0, 2);
+    shadow->setOffset(2);
     setGraphicsEffect(shadow);
   }
 
   QSize sizeHint() const override {
     auto sh = QTableWidget::sizeHint();
-    if (static_cast<std::uint32_t>(rowCount()) > PopupMenu::visibleRowCount) {
+    auto rCount = static_cast<std::uint32_t>(rowCount());
+    if (rCount > PopupMenu::visibleRowCount) {
       static const std::uint32_t scrollbarWidth = 8;
       sh.setWidth(sh.width() + scrollbarWidth);
     }
     return sh;
   }
 
+  void mousePressEvent(QMouseEvent*) override {}
+  void mouseReleaseEvent(QMouseEvent*) override {}
+  void mouseDoubleClickEvent(QMouseEvent*) override {}
+  void wheelEvent(QWheelEvent *) override {}
 };
 
 }
@@ -140,9 +145,9 @@ void PopupMenu::show(Items items,
     std::uint32_t row,
     std::uint32_t col) {
   if(items.isEmpty()) { return; }
-  auto added = addItems(items);
+  addItems(items);
+  setWindowHeight(items.size());
   select(selectIdx);
-  setWindowHeight(added);
   showPositionedWindow(row, col);
 }
 
@@ -168,14 +173,13 @@ void PopupMenu::addItem(std::uint32_t row, Item const& item) {
   widget->setItem(row, 2, new QTableWidgetItem(item.menu.trimmed()));
 }
 
-std::uint32_t PopupMenu::addItems(Items const& items) {
+void PopupMenu::addItems(Items const& items) {
   widget->clearContents();
   widget->setRowCount(items.size());
   std::uint32_t idx = 0;
   for(auto const& item: items) {
     addItem(idx++, item);
   }
-  return static_cast<std::uint32_t>(items.size());
 }
 
 void PopupMenu::setSelection(bool state) {
@@ -187,13 +191,14 @@ void PopupMenu::setSelection(bool state) {
 
 void PopupMenu::showPositionedWindow(std::uint32_t row, std::uint32_t col) {
   auto cellSize = getCellSize();
-  widget->move(col*cellSize.width(), (row+1)*cellSize.height());
+  widget->move(col*cellSize.width(), (row+1)*cellSize.height() + 2);
   widget->show();
 }
 
 void PopupMenu::setWindowHeight(std::uint32_t items) {
   static const std::uint32_t bordersize = 3;
   widget->setMaximumHeight(std::min(visibleRowCount, items)*widget->rowHeight(0) + bordersize);
+  widget->setMinimumHeight(widget->rowHeight(0) + bordersize);
 }
 
 void PopupMenu::updateConfig(QVariant const& colors, QVariant const& kind_config) {

@@ -5,9 +5,11 @@
 #include <QString>
 #include <QVector>
 #include <QVariantList>
+#include <QVariant>
 
 #include <stdexcept>
 #include <functional>
+#include <cstdint>
 
 class QTableWidget;
 class QWidget;
@@ -48,16 +50,16 @@ public:
   void hide();
 
   template<typename T>
-    static T variantVal(QVariant const& from) {
-      if(from.canConvert<T>()) {
-        return from.value<T>();
-      }
-      throw PopupMenu::ConversionError("variant conversion failed");
+  static T variantVal(QVariant const& from) {
+    if(from.canConvert<T>()) {
+      return from.value<T>();
     }
+    throw PopupMenu::ConversionError("variant conversion failed");
+  }
 
 private:
   void addItem(std::uint32_t row, Item const& item);
-  std::uint32_t addItems(Items const& items);
+  void addItems(Items const& items);
   void setSelection(bool state);
   void showPositionedWindow(std::uint32_t row, std::uint32_t col);
   void setWindowHeight(std::uint32_t items);
