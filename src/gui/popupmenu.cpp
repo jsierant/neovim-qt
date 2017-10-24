@@ -4,6 +4,8 @@
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QGraphicsDropShadowEffect>
+#include <QDebug>
+#include <map>
 
 namespace NeovimQt {
 namespace {

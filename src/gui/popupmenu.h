@@ -1,9 +1,13 @@
 #ifndef NEOVIM_GUI_POPUPMENU
 #define NEOVIM_GUI_POPUPMENU
 
+#include <QSize>
 #include <QString>
-#include <QDebug>
-#include <map>
+#include <QVector>
+#include <QVariantList>
+
+#include <stdexcept>
+#include <functional>
 
 class QTableWidget;
 class QWidget;
