@@ -337,31 +337,6 @@ void Shell::handleSetScrollRegion(const QVariantList& opargs)
 }
 
 
-void Shell::handlePopupMenuShow(QVariantList const& opargs) {
-  try {
-    if(opargs.size() == 4) {
-      m_popupmenu.show(
-          PopupMenu::convertItems(
-            PopupMenu::variantVal<QVariantList>(opargs.at(0))),
-          PopupMenu::variantVal<int>(opargs.at(1)),
-          PopupMenu::variantVal<std::uint32_t>(opargs.at(2)),
-          PopupMenu::variantVal<std::uint32_t>(opargs.at(3)));
-      return;
-    }
-    qWarning() << "invalid number of args for popupmenu show";
-  }
-  catch (PopupMenu::ConversionError const& e) {
-    qWarning() << "failed to load params for popupmenu show, what: " << e.what();
-  }
-}
-
-void Shell::handlePopupMenuSelect(QVariantList const& opargs) {
-  if(opargs.size() == 1 && opargs[0].canConvert<int>()) {
-    return m_popupmenu.select(opargs[0].value<int>());
-  }
-  qWarning() << "invalid arguments for popupmenu_show";
-}
-
 void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 {
 	if (name == "update_fg") {
@@ -449,9 +424,9 @@ void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 		handleBusy(false);
 	} else if (name == "set_icon") {
 	} else if (name == "popupmenu_show") {
-    return handlePopupMenuShow(opargs);
+    return m_popupmenu.show(opargs);
 	} else if (name == "popupmenu_select") {
-    return handlePopupMenuSelect(opargs);
+    return m_popupmenu.select(opargs);
 	} else if (name == "popupmenu_hide") {
     m_popupmenu.hide();
 	} else {
@@ -542,8 +517,8 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
 		} else if (guiEvName == "Close" && args.size() == 1) {
 			qDebug() << "Neovim requested a GUI close";
 			emit neovimGuiCloseRequest();
-		} else if (guiEvName == "PopupMenuConfig" && args.size() == 3) {
-      m_popupmenu.updateConfig(args[1], args[2]);
+		} else if (guiEvName == "PopupMenuConfig") {
+      return m_popupmenu.updateConfig(args);
     }
 		return;
 	} else if (name != "redraw") {

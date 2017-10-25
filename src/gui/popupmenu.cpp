@@ -10,60 +10,50 @@
 namespace NeovimQt {
 namespace {
 
-// supported kinds
-// 'Text', 'Method', 'Function', 'Constructor', 'Field', 'Variable', 'Class',
-// 'Interface', 'Module', 'Property', 'Unit', 'Value', 'Enum', 'Keyword',
-// 'Snippet', 'Color', 'File', 'Reference'
-
-inline QTableWidgetItem* getKindItem(QString const& kind) {
-  if (kind.isEmpty()) {
-    return new QTableWidgetItem("un");
-  }
-  static const std::map<QString, std::pair<QString, QColor>> abbr = {
-    { "Text", {"tx", QColor(0x07, 0x66, 0x78)}},
-    { "Method", {"mt", QColor(0x79, 0x74, 0x0e)}},
-    { "Function", {"fn", QColor(0x00, 0xa7, 0xaf)}},
-    { "Constructor", {"ct", QColor(50, 100, 50)}},
-    { "Field", {"fd", QColor(0xaf, 0x3a, 0x03)}},
-    { "Variable", {"vr", QColor(50, 100, 50)}},
-    { "Class", {"cl", QColor(0x42, 0x7b, 0x58)}},
-    { "Interface", {"if", QColor(50, 100, 50)}},
-    { "Module", {"md", QColor(0xb5, 0x76, 0x14)}},
-    { "Property", {"pr", QColor(50, 100, 50)}},
-    { "Unit", {"ut", QColor(50, 100, 50)}},
-    { "Value", {"vl", QColor(50, 100, 50)}},
-    { "Enum", {"em", QColor(50, 100, 50)}},
-    { "Keyword", {"kd", QColor(0xdd, 0x6f, 0x48)}},
-    { "Snippet", {"st", QColor(50, 100, 50)}},
-    { "Color", {"cl", QColor(50, 100, 50)}},
-    { "File", {"fe", QColor(50, 100, 50)}},
-    { "Reference", {"rf", QColor(50, 100, 50)}}
-  };
-
-  auto match = abbr.find(kind);
-  if(match == abbr.end()) {
-    auto* item = new QTableWidgetItem(kind);
-    item->setBackground(QBrush(QColor(200,0,0)));
-    return item;
-  }
-  auto* item = new QTableWidgetItem(match->second.first);
-  item->setBackground(QBrush(match->second.second));
+inline QTableWidgetItem* getKindItem(QString const& kind,
+    PopupMenu::KindConfig const& config) {
+  auto def = config.value(kind, {kind, "#232323"});
+  auto* item = new QTableWidgetItem(def[0]);
+  item->setBackground(QBrush(QColor(def[1])));
   item->setTextAlignment(Qt::AlignHCenter|Qt::AlignBottom);
   return item;
 }
 
+PopupMenu::KindConfig const defaultKindConfig {
+  { "Text", {"tx", "#076678"}},
+  { "Method", {"mt", "#79740e"}},
+  { "Function", {"fn", "#00a7af"}},
+  { "Constructor", {"ct", "#223322"}},
+  { "Field", {"fd", "#af3a03"}},
+  { "Variable", {"vr", "#3432d34"}},
+  { "Class", {"cl", "#427b58"}},
+  { "Interface", {"if", "#842004"}},
+  { "Module", {"md", "#b57614"}},
+  { "Property", {"pr", "#023435"}},
+  { "Unit", {"ut", "#934139"}},
+  { "Value", {"vl", "#99e92f"}},
+  { "Enum", {"em", "#409349"}},
+  { "Keyword", {"kd", "#dd6f48"}},
+  { "Snippet", {"st", "#530029"}},
+  { "Color", {"cl", "#a42f93"}},
+  { "File", {"fe", "#53232d"}},
+  { "Reference", {"rf", "#ed2334"}}
+};
 
 PopupMenu::Item convertItem(QVariantList const& from) {
   if(from.size() != 4) {
-    throw PopupMenu::ConversionError(
-        "invaid item tab size, failed to convert item");
+    throw PopupMenuDecoding::ConversionError(
+        "Invaid item tab size, failed to convert item");
   }
   PopupMenu::Item item;
-  item.word = PopupMenu::variantVal<QString>(from[0]);
-  item.kind = PopupMenu::variantVal<QString>(from[1]);
-  item.menu = PopupMenu::variantVal<QString>(from[2]);
+  item.word = PopupMenuDecoding::variantVal<QString>(from[0]);
+  item.kind = PopupMenuDecoding::variantVal<QString>(from[1]);
+  item.menu = PopupMenuDecoding::variantVal<QString>(from[2]);
   return item;
 }
+
+}
+
 
 class PopupMenuTableWidget
   : public QTableWidget {
@@ -87,17 +77,7 @@ public:
     horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     setFocusPolicy(Qt::NoFocus);
-    setStyleSheet("color: #fdf4c1;"
-        " background-color: #393939;"
-        " selection-background-color: #4a4a4a;");
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-    QScrollBar* sb = verticalScrollBar();
-    sb->setStyleSheet(
-      "QScrollBar:vertical{margin: 0 0 0 0; width: 8px; background: #000000}"
-      "QScrollBar::add-line:vertical{background: none; border:none; color:none}"
-      "QScrollBar::sub-line:vertical{background: none; border:none; color:none}"
-      "QScrollBar::handle:vertical{background-color: #555555}"
-      "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{background: none}");
 
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(this);
     shadow->setBlurRadius(20);
@@ -120,16 +100,38 @@ public:
   void mouseReleaseEvent(QMouseEvent*) override {}
   void mouseDoubleClickEvent(QMouseEvent*) override {}
   void wheelEvent(QWheelEvent *) override {}
+
+  void updateStyle(PopupMenu::ColorConfig const& config) {
+    setStyleSheet(QString("color: %1;"
+        " background-color: %2;"
+        " selection-background-color: %3;")
+        .arg(config.value("foreground", "#fdf4c1"))
+        .arg(config.value("background", "#393939"))
+        .arg(config.value("selected", "#4a4a4a")) );
+
+    QScrollBar* sb = verticalScrollBar();
+    sb->setStyleSheet(QString(
+      "QScrollBar:vertical{margin: 0 0 0 0; width: 8px; background: %2}"
+      "QScrollBar::add-line:vertical{background: none; border:none; color:none}"
+      "QScrollBar::sub-line:vertical{background: none; border:none; color:none}"
+      "QScrollBar::handle:vertical{background-color: %1}"
+      "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{background: none}")
+        .arg(config.value("scrollbar-foreground", "#555555"))
+        .arg(config.value("scrollbar-background", "#000000")) );
+
+  }
 };
 
-}
 
 const std::uint32_t PopupMenu::visibleRowCount = 15;
 
 PopupMenu::PopupMenu(QWidget* parent,
     GetCellSize cellSizeGetter)
   : widget(new PopupMenuTableWidget(parent)),
-    getCellSize(cellSizeGetter) {
+    getCellSize(cellSizeGetter),
+    selected(-1),
+    kindConfig(defaultKindConfig),
+    styleSet(false) {
 
     widget->hide();
     widget->setColumnCount(3);
@@ -168,7 +170,7 @@ void PopupMenu::hide() {
 }
 
 void PopupMenu::addItem(std::uint32_t row, Item const& item) {
-  widget->setItem(row, 0, getKindItem(item.kind));
+  widget->setItem(row, 0, getKindItem(item.kind, kindConfig));
   widget->setItem(row, 1, new QTableWidgetItem(QString(' ') + item.word));
   widget->setItem(row, 2, new QTableWidgetItem(item.menu.trimmed()));
 }
@@ -192,6 +194,7 @@ void PopupMenu::setSelection(bool state) {
 void PopupMenu::showPositionedWindow(std::uint32_t row, std::uint32_t col) {
   auto cellSize = getCellSize();
   widget->move(col*cellSize.width(), (row+1)*cellSize.height() + 2);
+  initStyleIfNotConfigured();
   widget->show();
 }
 
@@ -201,14 +204,98 @@ void PopupMenu::setWindowHeight(std::uint32_t items) {
   widget->setMinimumHeight(widget->rowHeight(0) + bordersize);
 }
 
-void PopupMenu::updateConfig(QVariant const& colors, QVariant const& kind_config) {
-  qDebug() << "JJJJJJJJJJJJJJJJJJ updateConfig: {colors: " << colors << ", kindconfig: " << kind_config << "}";
+void PopupMenu::updateConfig(ColorConfig const& colors, KindConfig const& newKindConfig) {
+  if(!newKindConfig.isEmpty()) {
+    kindConfig = newKindConfig;
+  }
+  widget->updateStyle(colors);
+  styleSet = true;
 }
 
-PopupMenu::Items PopupMenu::convertItems(QVariantList const& from) {
+void PopupMenu::initStyleIfNotConfigured() {
+  if(!styleSet) {
+    widget->updateStyle(ColorConfig());
+    styleSet = true;
+  }
+}
+
+PopupMenuDecoding::PopupMenuDecoding(QWidget* parent,
+                                     PopupMenu::GetCellSize getCellSize)
+  : m_menu(parent, getCellSize) {}
+
+PopupMenu::ColorConfig PopupMenuDecoding::toColorConfig(QVariantMap const& in) {
+  PopupMenu::ColorConfig cc;
+  for(auto const option: in.keys()) {
+    cc.insert(option, variantVal<QString>(in[option]));
+  }
+  return cc;
+}
+
+
+PopupMenu::KindConfig PopupMenuDecoding::toKindConfig(QVariantMap const& in) {
+  PopupMenu::KindConfig kc;
+  for(auto const option: in.keys()) {
+    auto def = toVect<QString>(variantVal<QVariantList>(in[option]));
+    if (def.size() != 2) {
+      throw ConversionError(
+          "Wrong number of parameter for kind value expected [abbr, color]");
+    }
+    kc.insert(option, def);
+  }
+  return kc;
+}
+
+void PopupMenuDecoding::updateConfig(QVariantList const& args) {
+  try {
+    if(args.size() == 3) {
+      auto colors = variantVal<QVariantMap>(args[1]);
+      auto kinds = variantVal<QVariantMap>(args[2]);
+      m_menu.updateConfig(toColorConfig(colors), toKindConfig(kinds));
+      return;
+    }
+    qWarning() << "Invalid number of args for popupmenu update config: " << args;
+  }
+  catch (ConversionError const& e) {
+    qWarning() << "Failed to load params for popupmenu update config, what: "
+               << e.what() << " args:" << args;
+  }
+}
+
+void PopupMenuDecoding::show(QVariantList const& args) {
+  try {
+    if(args.size() == 4) {
+      m_menu.show(
+          convertItems(
+            variantVal<QVariantList>(args[0])),
+          variantVal<int>(args[1]),
+          variantVal<std::uint32_t>(args[2]),
+          variantVal<std::uint32_t>(args[3]));
+      return;
+    }
+    qWarning() << "invalid number of args for popupmenu show";
+  }
+  catch (ConversionError const& e) {
+    qWarning() << "failed to load params for popupmenu show, what: " << e.what();
+  }
+}
+
+void PopupMenuDecoding::select(QVariantList const& args) {
+  if(args.size() == 1 && args[0].canConvert<int>()) {
+    return m_menu.select(args[0].value<int>());
+  }
+  qWarning() << "invalid arguments for popupmenu_show";
+}
+
+void PopupMenuDecoding::hide() {
+  m_menu.hide();
+}
+
+PopupMenu::Items
+PopupMenuDecoding::convertItems(QVariantList const& from) {
   PopupMenu::Items items;
   for(auto const& item: from) {
-    items.append(convertItem(PopupMenu::variantVal<QVariantList>(item)));
+    items.append(convertItem(
+          PopupMenuDecoding::variantVal<QVariantList>(item)));
   }
   return items;
 }
