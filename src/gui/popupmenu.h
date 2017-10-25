@@ -38,7 +38,8 @@ public:
   PopupMenu(QWidget* parent,
       GetCellSize cellSizeGetter);
 
-  void updateConfig(ColorConfig const&, KindConfig const&);
+  void setStyle(ColorConfig const&);
+  void setKindConfig(KindConfig const&);
 
   void show(Items items,
       Idx selected,
@@ -93,7 +94,9 @@ public:
     return converted;
   }
 
-  void updateConfig(QVariantList const& args);
+  void setStyle(QVariantList const& args);
+  void setKindConfig(QVariantList const& args);
+
   void show(QVariantList const& args);
   void select(QVariantList const& args);
   void hide();

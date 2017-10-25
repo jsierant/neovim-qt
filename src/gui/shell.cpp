@@ -517,8 +517,10 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
 		} else if (guiEvName == "Close" && args.size() == 1) {
 			qDebug() << "Neovim requested a GUI close";
 			emit neovimGuiCloseRequest();
-		} else if (guiEvName == "PopupMenuConfig") {
-      return m_popupmenu.updateConfig(args);
+		} else if (guiEvName == "popupmenu#set_style") {
+      return m_popupmenu.setStyle(args);
+		} else if (guiEvName == "popupmenu#set_kind_config") {
+      return m_popupmenu.setKindConfig(args);
     }
 		return;
 	} else if (name != "redraw") {

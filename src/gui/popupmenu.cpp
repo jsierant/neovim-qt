@@ -80,7 +80,7 @@ public:
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(20);
+    shadow->setBlurRadius(5);
     shadow->setColor(QColor(0, 0, 0, 255));
     shadow->setOffset(0, 2);
     setGraphicsEffect(shadow);
@@ -192,24 +192,26 @@ void PopupMenu::setSelection(bool state) {
 }
 
 void PopupMenu::showPositionedWindow(std::uint32_t row, std::uint32_t col) {
+  static auto const offset = 4u;
   auto cellSize = getCellSize();
-  widget->move(col*cellSize.width(), (row+1)*cellSize.height() + 2);
+  widget->move(col*cellSize.width(), (row+1)*cellSize.height() + offset);
   initStyleIfNotConfigured();
   widget->show();
 }
 
 void PopupMenu::setWindowHeight(std::uint32_t items) {
-  static const std::uint32_t bordersize = 3;
-  widget->setMaximumHeight(std::min(visibleRowCount, items)*widget->rowHeight(0) + bordersize);
+  static const std::uint32_t bordersize = 2;
+  widget->setMaximumHeight(visibleRowCount*widget->rowHeight(0) + bordersize);
   widget->setMinimumHeight(widget->rowHeight(0) + bordersize);
 }
 
-void PopupMenu::updateConfig(ColorConfig const& colors, KindConfig const& newKindConfig) {
-  if(!newKindConfig.isEmpty()) {
-    kindConfig = newKindConfig;
-  }
+void PopupMenu::setStyle(ColorConfig const& colors) {
   widget->updateStyle(colors);
   styleSet = true;
+}
+
+void PopupMenu::setKindConfig(KindConfig const& newKindConfig) {
+  kindConfig = newKindConfig;
 }
 
 void PopupMenu::initStyleIfNotConfigured() {
@@ -245,18 +247,29 @@ PopupMenu::KindConfig PopupMenuDecoding::toKindConfig(QVariantMap const& in) {
   return kc;
 }
 
-void PopupMenuDecoding::updateConfig(QVariantList const& args) {
+void PopupMenuDecoding::setStyle(QVariantList const& args) {
   try {
-    if(args.size() == 3) {
-      auto colors = variantVal<QVariantMap>(args[1]);
-      auto kinds = variantVal<QVariantMap>(args[2]);
-      m_menu.updateConfig(toColorConfig(colors), toKindConfig(kinds));
+    if(args.size() == 2) {
+      m_menu.setStyle(toColorConfig(variantVal<QVariantMap>(args[1])));
       return;
     }
-    qWarning() << "Invalid number of args for popupmenu update config: " << args;
+    qWarning() << "Invalid number of args for popupmenu set style: " << args;
   }
   catch (ConversionError const& e) {
-    qWarning() << "Failed to load params for popupmenu update config, what: "
+    qWarning() << "Failed to load params for popupmenu set style, what: "
+               << e.what() << " args:" << args;
+  }
+}
+
+void PopupMenuDecoding::setKindConfig(QVariantList const& args) {
+  try {
+    if(args.size() == 2) {
+      return m_menu.setKindConfig(toKindConfig(variantVal<QVariantMap>(args[1])));
+    }
+    qWarning() << "Invalid number of args for popupmenu set kind config: " << args;
+  }
+  catch (ConversionError const& e) {
+    qWarning() << "Failed to load params for popupmenu set kind config, what: "
                << e.what() << " args:" << args;
   }
 }
