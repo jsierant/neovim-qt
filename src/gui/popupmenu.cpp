@@ -100,9 +100,9 @@ public:
       "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{background: none}");
 
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(10);
+    shadow->setBlurRadius(20);
     shadow->setColor(QColor(0, 0, 0, 255));
-    shadow->setOffset(2);
+    shadow->setOffset(0, 2);
     setGraphicsEffect(shadow);
   }
 
