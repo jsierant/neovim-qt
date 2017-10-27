@@ -23,7 +23,8 @@ Shell::Shell(NeovimConnector *nvim, QWidget *parent)
 	m_resizing(false),
 	m_mouse_wheel_delta_fraction(0, 0),
 	m_neovimBusy(false),
-  m_popupmenu(this, [this]{ return cellSize(); })
+  m_popupmenu(this, [this]{ return cellSize(); }),
+  m_signature(this)
 {
 	setAttribute(Qt::WA_KeyCompression, false);
 
@@ -521,6 +522,10 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
       return m_popupmenu.setStyle(args);
 		} else if (guiEvName == "popupmenu#set_kind_config") {
       return m_popupmenu.setKindConfig(args);
+		} else if (guiEvName == "signature#show") {
+      return m_signature.show(args);
+		} else if (guiEvName == "signature#hide") {
+      return m_signature.hide();
     }
 		return;
 	} else if (name != "redraw") {

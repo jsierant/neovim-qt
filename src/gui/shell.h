@@ -12,6 +12,7 @@
 #include "neovimconnector.h"
 #include "shellwidget/shellwidget.h"
 #include "popupmenu.h"
+#include "signature.h"
 
 namespace NeovimQt {
 
@@ -133,6 +134,7 @@ private:
 	bool m_neovimBusy;
 
   PopupMenuDecoding m_popupmenu;
+  SignatureDecoding m_signature;
 };
 
 } // Namespace

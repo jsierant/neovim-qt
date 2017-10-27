@@ -2,6 +2,7 @@
 #define NEOVIM_GUI_SIGNATURE
 
 #include <QString>
+#include <QVariant>
 #include <QVector>
 #include <cstdint>
 
@@ -24,6 +25,17 @@ public:
       int active_param);
 
   void hide();
+};
+
+class SignatureDecoding {
+public:
+  SignatureDecoding(QWidget* parent);
+  void show(QVariant const&);
+
+  void hide();
+
+private:
+  Signature m_signature;
 };
 
 }
