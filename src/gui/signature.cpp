@@ -21,8 +21,12 @@ SignatureDecoding::SignatureDecoding(QWidget* parent)
   : m_signature(parent) {
 }
 
-void SignatureDecoding::show(QVariant const&) {
-  qDebug() << "+++JS: signature decode show";
+void SignatureDecoding::show(QVariantList const& args) {
+  if(args.size() != 5) {
+    qDebug() << "Invalid number of args: expected 4, received: " << args.size() ;
+  }
+
+  qDebug() << "+++JS: signature decode show: " << args;
 }
 
 void SignatureDecoding::hide() {

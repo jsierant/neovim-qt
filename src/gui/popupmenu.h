@@ -65,34 +65,12 @@ private:
 
 class PopupMenuDecoding {
 public:
-  struct ConversionError : std::runtime_error{
-    ConversionError(char const* msg)
-      : std::runtime_error(msg) {}
-  };
-
   PopupMenuDecoding(QWidget* parent,
       PopupMenu::GetCellSize getCellSize);
 
   static PopupMenu::Items convertItems(QVariantList const&);
   static PopupMenu::ColorConfig toColorConfig(QVariantMap const&);
   static PopupMenu::KindConfig toKindConfig(QVariantMap const&);
-
-  template<typename T>
-  static T variantVal(QVariant const& from) {
-    if(from.canConvert<T>()) {
-      return from.value<T>();
-    }
-    throw ConversionError("variant conversion failed");
-  }
-
-  template<typename T>
-  static QVector<T> toVect(QVariantList const& list) {
-    QVector<T> converted;
-    for(auto const& el: list) {
-      converted.push_back(variantVal<T>(el));
-    }
-    return converted;
-  }
 
   void setStyle(QVariantList const& args);
   void setKindConfig(QVariantList const& args);

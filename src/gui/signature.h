@@ -2,7 +2,7 @@
 #define NEOVIM_GUI_SIGNATURE
 
 #include <QString>
-#include <QVariant>
+#include <QVariantList>
 #include <QVector>
 #include <cstdint>
 
@@ -30,7 +30,7 @@ public:
 class SignatureDecoding {
 public:
   SignatureDecoding(QWidget* parent);
-  void show(QVariant const&);
+  void show(QVariantList const&);
 
   void hide();
 

@@ -1,4 +1,5 @@
 #include "popupmenu.h"
+#include "args_conv.h"
 
 #include <QTableWidget>
 #include <QHeaderView>
@@ -42,13 +43,13 @@ PopupMenu::KindConfig const defaultKindConfig {
 
 PopupMenu::Item convertItem(QVariantList const& from) {
   if(from.size() != 4) {
-    throw PopupMenuDecoding::ConversionError(
+    throw ConversionError(
         "Invaid item tab size, failed to convert item");
   }
   PopupMenu::Item item;
-  item.word = PopupMenuDecoding::variantVal<QString>(from[0]);
-  item.kind = PopupMenuDecoding::variantVal<QString>(from[1]);
-  item.menu = PopupMenuDecoding::variantVal<QString>(from[2]);
+  item.word = getValue<QString>(from[0]);
+  item.kind = getValue<QString>(from[1]);
+  item.menu = getValue<QString>(from[2]);
   return item;
 }
 
@@ -228,7 +229,7 @@ PopupMenuDecoding::PopupMenuDecoding(QWidget* parent,
 PopupMenu::ColorConfig PopupMenuDecoding::toColorConfig(QVariantMap const& in) {
   PopupMenu::ColorConfig cc;
   for(auto const option: in.keys()) {
-    cc.insert(option, variantVal<QString>(in[option]));
+    cc.insert(option, getValue<QString>(in[option]));
   }
   return cc;
 }
@@ -237,7 +238,7 @@ PopupMenu::ColorConfig PopupMenuDecoding::toColorConfig(QVariantMap const& in) {
 PopupMenu::KindConfig PopupMenuDecoding::toKindConfig(QVariantMap const& in) {
   PopupMenu::KindConfig kc;
   for(auto const option: in.keys()) {
-    auto def = toVect<QString>(variantVal<QVariantList>(in[option]));
+    auto def = toVect<QString>(getValue<QVariantList>(in[option]));
     if (def.size() != 2) {
       throw ConversionError(
           "Wrong number of parameter for kind value expected [abbr, color]");
@@ -250,7 +251,7 @@ PopupMenu::KindConfig PopupMenuDecoding::toKindConfig(QVariantMap const& in) {
 void PopupMenuDecoding::setStyle(QVariantList const& args) {
   try {
     if(args.size() == 2) {
-      m_menu.setStyle(toColorConfig(variantVal<QVariantMap>(args[1])));
+      m_menu.setStyle(toColorConfig(getValue<QVariantMap>(args[1])));
       return;
     }
     qWarning() << "Invalid number of args for popupmenu set style: " << args;
@@ -264,7 +265,7 @@ void PopupMenuDecoding::setStyle(QVariantList const& args) {
 void PopupMenuDecoding::setKindConfig(QVariantList const& args) {
   try {
     if(args.size() == 2) {
-      return m_menu.setKindConfig(toKindConfig(variantVal<QVariantMap>(args[1])));
+      return m_menu.setKindConfig(toKindConfig(getValue<QVariantMap>(args[1])));
     }
     qWarning() << "Invalid number of args for popupmenu set kind config: " << args;
   }
@@ -279,10 +280,10 @@ void PopupMenuDecoding::show(QVariantList const& args) {
     if(args.size() == 4) {
       m_menu.show(
           convertItems(
-            variantVal<QVariantList>(args[0])),
-          variantVal<int>(args[1]),
-          variantVal<std::uint32_t>(args[2]),
-          variantVal<std::uint32_t>(args[3]));
+            getValue<QVariantList>(args[0])),
+          getValue<int>(args[1]),
+          getValue<std::uint32_t>(args[2]),
+          getValue<std::uint32_t>(args[3]));
       return;
     }
     qWarning() << "invalid number of args for popupmenu show";
@@ -308,7 +309,7 @@ PopupMenuDecoding::convertItems(QVariantList const& from) {
   PopupMenu::Items items;
   for(auto const& item: from) {
     items.append(convertItem(
-          PopupMenuDecoding::variantVal<QVariantList>(item)));
+          getValue<QVariantList>(item)));
   }
   return items;
 }
