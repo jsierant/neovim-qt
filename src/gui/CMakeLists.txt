@@ -17,9 +17,9 @@ add_subdirectory(shellwidget)
 include(GNUInstallDirs)
 set(RUNTIME_PATH )
 add_library(neovim-qt-gui shell.cpp input.cpp errorwidget.cpp mainwindow.cpp app.cpp
-  popupmenu.cpp
-	${CMAKE_SOURCE_DIR}/third-party/konsole_wcwidth.cpp
-	${NEOVIM_RCC_SOURCES})
+  popupmenu.cpp signature.cpp
+  ${CMAKE_SOURCE_DIR}/third-party/konsole_wcwidth.cpp
+  ${NEOVIM_RCC_SOURCES})
 target_link_libraries(neovim-qt-gui qshellwidget neovim-qt)
 
 if(NOT APPLE)
