@@ -24,7 +24,7 @@ Shell::Shell(NeovimConnector *nvim, QWidget *parent)
 	m_mouse_wheel_delta_fraction(0, 0),
 	m_neovimBusy(false),
   m_popupmenu(this, [this]{ return cellSize(); }),
-  m_signature(this)
+  m_signature(this, [this]{ return cellSize(); }, [this] { return m_cursor_pos; })
 {
 	setAttribute(Qt::WA_KeyCompression, false);
 

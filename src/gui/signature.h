@@ -4,32 +4,47 @@
 #include <QString>
 #include <QVariantList>
 #include <QVector>
+#include <QListWidget>
 #include <cstdint>
 
 class QWidget;
 
 namespace NeovimQt {
 
+class LabelVList;
+
 class Signature {
 public:
-  Signature(QWidget* parent);
-  struct SignatureDef {
-    enum SepCharIdx { begin = 0, end, sep };
+  using GetCellSize = std::function<QSize()>;
+  using GetCursorPos = std::function<QPoint()>;
+  Signature(QWidget* parent,
+      GetCellSize,
+      GetCursorPos);
+
+  using SeperationChars = QVector<QString>;
+  struct SigInfo {
     QString label;
     QVector<QString> params;
-    QVector<QChar> seperation_chars;
   };
 
-  void show(SignatureDef,
-      std::uint32_t active_signature,
-      int active_param);
+  void show(QVector<SigInfo>,
+      int active_signature,
+      int active_param,
+      SeperationChars const&);
 
   void hide();
+private:
+  QWidget* parent;
+  LabelVList* widget;
+  GetCellSize getCellSize;
+  GetCursorPos getCursorPos;
 };
 
 class SignatureDecoding {
 public:
-  SignatureDecoding(QWidget* parent);
+  SignatureDecoding(QWidget* parent,
+      Signature::GetCellSize,
+      Signature::GetCursorPos);
   void show(QVariantList const&);
 
   void hide();

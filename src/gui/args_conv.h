@@ -19,13 +19,19 @@ T getValue(QVariant const& from) {
   throw ConversionError("variant conversion failed");
 }
 
-template<typename T>
-QVector<T> toVect(QVariantList const& list) {
+
+template<typename T, typename F>
+QVector<T> toVect(QVariantList const& list, F convert) {
   QVector<T> converted;
   for(auto const& el: list) {
-    converted.push_back(getValue<T>(el));
+    converted.push_back(convert(el));
   }
   return converted;
+}
+
+template<typename T>
+QVector<T> toVect(QVariantList const& list) {
+  return toVect<T>(list, getValue<T>);
 }
 
 }
