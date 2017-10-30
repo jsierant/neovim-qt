@@ -24,7 +24,8 @@ public:
       size(0, 0) {
     widget->hide();
     widget->setContentsMargins(0, 0, 0, 0);
-    widget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    widget->setSizePolicy(QSizePolicy::Maximum,
+                          QSizePolicy::Maximum);
     widget->setFocusPolicy(Qt::NoFocus);
     widget->setStyleSheet(QString(
           "color: %1"
@@ -33,7 +34,8 @@ public:
         .arg("#393939") );
     layout->setContentsMargins(0, 0, 0, 0);
     widget->setLayout(layout);
-    }
+  }
+
   void addItem(QString const& text,
       Qt::TextFormat format = Qt::RichText) {
     auto* label = new QLabel(text);
@@ -42,8 +44,8 @@ public:
     label->setTextFormat(format);
     layout->addWidget(label);
     auto fm = QFontMetrics(font);
-    size = QSize(std::max(size.width(), label->minimumSizeHint().width()), fm.height() + size.height());
-    qDebug() << text;
+    size = QSize(std::max(size.width(), label->minimumSizeHint().width()),
+                 fm.height() + size.height());
   }
 
   void clear() {
@@ -64,6 +66,7 @@ public:
     }
     widget->show();
   }
+
   void hide() {
     widget->hide();
   }
@@ -159,11 +162,9 @@ void Signature::show(QVector<SigInfo> signatures,
   auto cursorPos = getCursorPos();
 
   widget->showAt(cursorPos.x()*cellSize.width(), (cursorPos.y()-signatures.size())*cellSize.height() - offset);
-  qDebug() << "+++JS: signature show";
 }
 
 void Signature::hide() {
-  qDebug() << "+++JS: signature hide";
   widget->hide();
 }
 
