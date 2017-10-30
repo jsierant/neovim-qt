@@ -72,6 +72,8 @@ public:
     widget->hide();
   }
 
+  void setStyle(Signature::StyleDef const&) {}
+
 private:
   QWidget* parent;
   QWidget* widget;
@@ -186,6 +188,11 @@ void Signature::hide() {
   widget->hide();
 }
 
+
+void Signature::setStyle(StyleDef const& style) {
+  widget->setStyle(style);
+}
+
 SignatureDecoding::SignatureDecoding(QWidget* parent,
                                      Signature::GetCellSize getCellSize,
                                      Signature::GetCursorPos cursorPosGetter)
@@ -220,6 +227,10 @@ void SignatureDecoding::show(QVariantList const& args) {
 
 void SignatureDecoding::hide() {
   m_signature.hide();
+}
+
+void SignatureDecoding::setStyle(QVariantList const&) {
+//   m_signature.setStyle(style);
 }
 
 }

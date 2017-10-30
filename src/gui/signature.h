@@ -2,6 +2,7 @@
 #define NEOVIM_GUI_SIGNATURE
 
 #include <QString>
+#include <QMap>
 #include <QVariantList>
 #include <QVector>
 #include <QListWidget>
@@ -22,6 +23,8 @@ public:
       GetCursorPos);
 
   using SeperationChars = QVector<QString>;
+  using StyleDef = QMap<QString, QString>;
+
   struct SigInfo {
     QString label;
     QVector<QString> params;
@@ -33,6 +36,8 @@ public:
       SeperationChars const&);
 
   void hide();
+  void setStyle(StyleDef const&);
+
 private:
   void moveAndShowWidget();
   void addItemsToWidget(
@@ -52,8 +57,9 @@ public:
   SignatureDecoding(QWidget* parent,
       Signature::GetCellSize,
       Signature::GetCursorPos);
-  void show(QVariantList const&);
 
+  void show(QVariantList const&);
+  void setStyle(QVariantList const&);
   void hide();
 
 private:
