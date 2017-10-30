@@ -27,13 +27,20 @@ public:
     QVector<QString> params;
   };
 
-  void show(QVector<SigInfo>,
+  void show(QVector<SigInfo> const&,
       int active_signature,
       int active_param,
       SeperationChars const&);
 
   void hide();
 private:
+  void moveAndShowWidget();
+  void addItemsToWidget(
+      QVector<SigInfo> const&,
+      int active_signature,
+      int active_param,
+      SeperationChars const&);
+
   QWidget* parent;
   LabelVList* widget;
   GetCellSize getCellSize;

@@ -55,15 +55,16 @@ public:
     }
   }
 
-  void showAt(int x, int y) {
-    auto f = parent->font();
+  int count() const { return layout->count(); }
+
+  bool isVisible() { return widget->isVisible(); }
+  void move(int x, int y) { widget->move(x, y); }
+
+  void show() {
     widget->setMaximumHeight(size.height());
     widget->setMaximumWidth(size.width());
     widget->setMinimumHeight(size.height());
     widget->setMinimumWidth(size.width());
-    if(!widget->isVisible()) {
-      widget->move(x, y);
-    }
     widget->show();
   }
 
@@ -145,23 +146,40 @@ QString makeActiveSigText(
   return text;
 }
 
-void Signature::show(QVector<SigInfo> signatures,
+void Signature::show(QVector<SigInfo> const& signatures,
       int active_signature,
       int active_param,
       SeperationChars const& sep) {
+
   widget->clear();
+  addItemsToWidget(signatures, 
+      active_signature, 
+      active_param, sep);
+  moveAndShowWidget();
+}
+
+void Signature::addItemsToWidget(
+    QVector<SigInfo> const& signatures,
+    int active_signature,
+    int active_param,
+    SeperationChars const& sep) {
   for(auto idx = 0; idx < signatures.size(); idx++) {
-    auto label = (idx != active_signature) ?
+    auto text = (idx != active_signature) ?
       makeSigText(signatures[idx], sep) :
       makeActiveSigText(signatures[idx], sep, active_param);
-    widget->addItem(label);
+    widget->addItem(text);
   }
+}
 
-  static auto const offset = 2u;
-  auto cellSize = getCellSize();
-  auto cursorPos = getCursorPos();
-
-  widget->showAt(cursorPos.x()*cellSize.width(), (cursorPos.y()-signatures.size())*cellSize.height() - offset);
+void Signature::moveAndShowWidget() {
+  if(!widget->isVisible()) {
+    static auto const offset = 2u;
+    auto cellSize = getCellSize();
+    auto cursorPos = getCursorPos();
+    widget->move(cursorPos.x()*cellSize.width(),
+        (cursorPos.y()-widget->count())*cellSize.height() - offset);
+  }
+  widget->show();
 }
 
 void Signature::hide() {
