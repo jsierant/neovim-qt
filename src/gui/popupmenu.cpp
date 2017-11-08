@@ -53,6 +53,8 @@ PopupMenu::Item convertItem(QVariantList const& from) {
   return item;
 }
 
+int const wordColIdx = 1;
+int const menuColIdx = 2;
 }
 
 
@@ -95,6 +97,10 @@ public:
       sh.setWidth(sh.width() + scrollbarWidth);
     }
     return sh;
+  }
+
+  void setMenuColVisible(bool state) {
+    setColumnHidden(menuColIdx, !state);
   }
 
   void mousePressEvent(QMouseEvent*) override {}
@@ -174,8 +180,8 @@ void PopupMenu::hide() {
 
 void PopupMenu::addItem(std::uint32_t row, Item const& item) {
   widget->setItem(row, 0, getKindItem(item.kind, kindConfig));
-  widget->setItem(row, 1, new QTableWidgetItem(QString(' ') + item.word));
-  widget->setItem(row, 2, new QTableWidgetItem(item.menu.trimmed()));
+  widget->setItem(row, wordColIdx, new QTableWidgetItem(QString(' ') + item.word));
+  widget->setItem(row, menuColIdx, new QTableWidgetItem(item.menu.trimmed()));
 }
 
 void PopupMenu::addItems(Items const& items) {
@@ -189,8 +195,8 @@ void PopupMenu::addItems(Items const& items) {
 
 void PopupMenu::setSelection(bool state) {
   if(widget->rowCount() > selected) {
-    widget->item(selected, 1)->setSelected(state);
-    widget->item(selected, 2)->setSelected(state);
+    widget->item(selected, wordColIdx)->setSelected(state);
+    widget->item(selected, menuColIdx)->setSelected(state);
   }
 }
 
@@ -201,7 +207,7 @@ void PopupMenu::moveWindow(std::uint32_t row, std::uint32_t col) {
   int editorWindowWidth = editorWindow->size().width();
   int cursorHPos = col*cellSize.width();
   widget->move(
-      editorWindowWidth < cursorHPos + popupWidth ? 
+      editorWindowWidth < cursorHPos + popupWidth ?
         std::max(0, editorWindowWidth - popupWidth) : cursorHPos,
       (row+1)*cellSize.height() + offset);
 }
@@ -224,6 +230,10 @@ void PopupMenu::setStyle(ColorConfig const& colors) {
 
 void PopupMenu::setKindConfig(KindConfig const& newKindConfig) {
   kindConfig = newKindConfig;
+}
+
+void PopupMenu::setMenuColVisible(bool state) {
+  widget->setMenuColVisible(state);
 }
 
 void PopupMenu::initStyleIfNotConfigured() {
@@ -313,6 +323,13 @@ void PopupMenuDecoding::select(QVariantList const& args) {
 
 void PopupMenuDecoding::hide() {
   m_menu.hide();
+}
+
+void PopupMenuDecoding::setMenuColVisible(QVariantList const& args) {
+  if(args.size() == 2 && args[1].canConvert<bool>()) {
+    return m_menu.setMenuColVisible(args[1].value<bool>());
+  }
+  qWarning() << "invalid arguments for popupmenu_set_menu_col_visible: " << args;
 }
 
 PopupMenu::Items

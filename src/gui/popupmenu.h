@@ -40,6 +40,7 @@ public:
 
   void setStyle(ColorConfig const&);
   void setKindConfig(KindConfig const&);
+  void setMenuColVisible(bool);
 
   void show(Items items,
       Idx selected,
@@ -76,6 +77,7 @@ public:
 
   void setStyle(QVariantList const& args);
   void setKindConfig(QVariantList const& args);
+  void setMenuColVisible(QVariantList const& args);
 
   void show(QVariantList const& args);
   void select(QVariantList const& args);

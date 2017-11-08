@@ -518,6 +518,8 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
 		} else if (guiEvName == "Close" && args.size() == 1) {
 			qDebug() << "Neovim requested a GUI close";
 			emit neovimGuiCloseRequest();
+		} else if (guiEvName == "popupmenu#set_menu_col_visible") {
+      return m_popupmenu.setMenuColVisible(args);
 		} else if (guiEvName == "popupmenu#set_style") {
       return m_popupmenu.setStyle(args);
 		} else if (guiEvName == "popupmenu#set_kind_config") {
