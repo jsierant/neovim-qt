@@ -52,10 +52,12 @@ private:
   void addItem(std::uint32_t row, Item const& item);
   void addItems(Items const& items);
   void setSelection(bool state);
-  void showPositionedWindow(std::uint32_t row, std::uint32_t col);
+  void showWindow();
   void setWindowHeight(std::uint32_t items);
   void initStyleIfNotConfigured();
+  void moveWindow(std::uint32_t row, std::uint32_t col);
 
+  QWidget* editorWindow;
   PopupMenuTableWidget* widget;
   GetCellSize getCellSize;
   int selected;
