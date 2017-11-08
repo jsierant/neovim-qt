@@ -127,7 +127,8 @@ const std::uint32_t PopupMenu::visibleRowCount = 15;
 
 PopupMenu::PopupMenu(QWidget* parent,
     GetCellSize cellSizeGetter)
-  : widget(new PopupMenuTableWidget(parent)),
+  : editorWindow(parent),
+    widget(new PopupMenuTableWidget(parent)),
     getCellSize(cellSizeGetter),
     selected(-1),
     kindConfig(defaultKindConfig),
@@ -150,7 +151,8 @@ void PopupMenu::show(Items items,
   addItems(items);
   setWindowHeight(items.size());
   select(selectIdx);
-  showPositionedWindow(row, col);
+  moveWindow(row, col);
+  showWindow();
 }
 
 void PopupMenu::select(Idx newselected) {
@@ -191,10 +193,19 @@ void PopupMenu::setSelection(bool state) {
   }
 }
 
-void PopupMenu::showPositionedWindow(std::uint32_t row, std::uint32_t col) {
+void PopupMenu::moveWindow(std::uint32_t row, std::uint32_t col) {
   static auto const offset = 4u;
   auto cellSize = getCellSize();
-  widget->move(col*cellSize.width(), (row+1)*cellSize.height() + offset);
+  auto popupWidth = widget->sizeHint().width();
+  int editorWindowWidth = editorWindow->size().width();
+  int cursorHPos = col*cellSize.width();
+  widget->move(
+      editorWindowWidth < cursorHPos + popupWidth ? 
+        std::max(0, editorWindowWidth - popupWidth) : cursorHPos,
+      (row+1)*cellSize.height() + offset);
+}
+
+void PopupMenu::showWindow() {
   initStyleIfNotConfigured();
   widget->show();
 }
