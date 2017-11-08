@@ -12,7 +12,7 @@ namespace {
 
 inline QTableWidgetItem* getKindItem(QString const& kind,
     PopupMenu::KindConfig const& config) {
-  auto def = config.value(kind, {kind, "#232323"});
+  auto def = config.value(kind.toLower(), {kind, "#232323"});
   auto* item = new QTableWidgetItem(def[0]);
   item->setBackground(QBrush(QColor(def[1])));
   item->setTextAlignment(Qt::AlignHCenter|Qt::AlignBottom);
@@ -20,24 +20,24 @@ inline QTableWidgetItem* getKindItem(QString const& kind,
 }
 
 PopupMenu::KindConfig const defaultKindConfig {
-  { "Text", {"tx", "#076678"}},
-  { "Method", {"mt", "#79740e"}},
-  { "Function", {"fn", "#00a7af"}},
-  { "Constructor", {"ct", "#223322"}},
-  { "Field", {"fd", "#af3a03"}},
-  { "Variable", {"vr", "#3432d34"}},
-  { "Class", {"cl", "#427b58"}},
-  { "Interface", {"if", "#842004"}},
-  { "Module", {"md", "#b57614"}},
-  { "Property", {"pr", "#023435"}},
-  { "Unit", {"ut", "#934139"}},
-  { "Value", {"vl", "#99e92f"}},
-  { "Enum", {"em", "#409349"}},
-  { "Keyword", {"kd", "#dd6f48"}},
-  { "Snippet", {"st", "#530029"}},
-  { "Color", {"cl", "#a42f93"}},
-  { "File", {"fe", "#53232d"}},
-  { "Reference", {"rf", "#ed2334"}}
+  { "text", {"tx", "#076678"}},
+  { "method", {"mt", "#79740e"}},
+  { "function", {"fn", "#00a7af"}},
+  { "constructor", {"ct", "#223322"}},
+  { "field", {"fd", "#af3a03"}},
+  { "variable", {"vr", "#3432d34"}},
+  { "class", {"cl", "#427b58"}},
+  { "interface", {"if", "#842004"}},
+  { "module", {"md", "#b57614"}},
+  { "property", {"pr", "#023435"}},
+  { "unit", {"ut", "#934139"}},
+  { "value", {"vl", "#99e92f"}},
+  { "enum", {"em", "#409349"}},
+  { "keyword", {"kd", "#dd6f48"}},
+  { "snippet", {"st", "#530029"}},
+  { "color", {"cl", "#a42f93"}},
+  { "file", {"fe", "#53232d"}},
+  { "reference", {"rf", "#ed2334"}}
 };
 
 PopupMenu::Item convertItem(QVariantList const& from) {
