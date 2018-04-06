@@ -5,6 +5,11 @@
 #include <msgpackrequest.h>
 #include "common.h"
 
+#if defined(Q_OS_WIN) && defined(USE_STATIC_QT)
+#include <QtPlugin>
+Q_IMPORT_PLUGIN (QWindowsIntegrationPlugin);
+#endif
+
 namespace NeovimQt {
 
 class Test: public QObject
@@ -28,7 +33,7 @@ private slots:
 			QVERIFY(onReady.isValid());
 			QVERIFY(SPYWAIT(onReady));
 
-			Shell *s = new Shell(c);
+			Shell *s = new Shell(c, ShellOptions());
 			QSignalSpy onResize(s, SIGNAL(neovimResized(int, int)));
 			QVERIFY(onResize.isValid());
 			QVERIFY(SPYWAIT(onResize));
@@ -39,7 +44,7 @@ private slots:
 		QStringList args;
 		args << "-u" << "NONE";
 		NeovimConnector *c = NeovimConnector::spawn(args);
-		Shell *s = new Shell(c);
+		Shell *s = new Shell(c, ShellOptions());
 		QSignalSpy onAttached(s, SIGNAL(neovimAttached(bool)));
 		QVERIFY(onAttached.isValid());
 		QVERIFY(SPYWAIT(onAttached));
@@ -55,7 +60,7 @@ private slots:
 	void startVarsShellWidget() {
 		QStringList args = {"-u", "NONE"};
 		NeovimConnector *c = NeovimConnector::spawn(args);
-		Shell *s = new Shell(c);
+		Shell *s = new Shell(c, ShellOptions());
 		QSignalSpy onAttached(s, SIGNAL(neovimAttached(bool)));
 		QVERIFY(onAttached.isValid());
 		QVERIFY(SPYWAIT(onAttached));
@@ -66,7 +71,7 @@ private slots:
 	void startVarsMainWindow() {
 		QStringList args = {"-u", "NONE"};
 		NeovimConnector *c = NeovimConnector::spawn(args);
-		MainWindow *s = new MainWindow(c);
+		MainWindow *s = new MainWindow(c, ShellOptions());
 		QSignalSpy onAttached(s, SIGNAL(neovimAttached(bool)));
 		QVERIFY(onAttached.isValid());
 		QVERIFY(SPYWAIT(onAttached));
@@ -82,7 +87,7 @@ private slots:
 		QStringList args = {"-u", "NONE",
 			"--cmd", "set rtp+=" + fi.absoluteFilePath()};
 		NeovimConnector *c = NeovimConnector::spawn(args);
-		MainWindow *s = new MainWindow(c);
+		MainWindow *s = new MainWindow(c, ShellOptions());
 		QSignalSpy onAttached(s, SIGNAL(neovimAttached(bool)));
 		QVERIFY(onAttached.isValid());
 		QVERIFY(SPYWAIT(onAttached));
@@ -115,9 +120,9 @@ protected:
 	void checkCommand(NeovimConnector *c, const QString& cmd,
 			bool output=false) {
 		auto req = c->neovimObject()->vim_command_output(c->encode(cmd));
-		QSignalSpy cmdOk(req, SIGNAL(finished(quint32, Function::FunctionId, QVariant)));
+		QSignalSpy cmdOk(req, SIGNAL(finished(quint32, quint64, QVariant)));
 		QVERIFY(cmdOk.isValid());
-		QObject::connect(c->neovimObject(), &Neovim::err_vim_command_output, [cmd](QString msg, const QVariant& err) {
+		QObject::connect(c->neovimObject(), &NeovimApi1::err_vim_command_output, [cmd](QString msg, const QVariant& err) {
 				qDebug() << cmd << msg;
 			});
 		qDebug() << cmd;
@@ -134,8 +139,8 @@ protected:
 
 	/// Check for the presence of the GUI variables in Neovim
 	void checkStartVars(NeovimQt::NeovimConnector *conn) {
-		NeovimQt::Neovim *nvim = conn->neovimObject();
-		connect(nvim, &NeovimQt::Neovim::err_vim_get_var,
+		auto *nvim = conn->api1();
+		connect(nvim, &NeovimQt::NeovimApi1::err_vim_get_var,
 			[](const QString& err, const QVariant& v) {
 				qDebug() << err<< v;
 			});

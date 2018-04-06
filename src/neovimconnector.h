@@ -5,8 +5,9 @@
 #include <QAbstractSocket>
 #include <QProcess>
 #include <QTextCodec>
-#include "function.h"
-#include "auto/neovim.h"
+#include "auto/neovimapi0.h"
+#include "auto/neovimapi1.h"
+#include "auto/neovimapi2.h"
 
 namespace NeovimQt {
 
@@ -14,7 +15,9 @@ class MsgpackIODevice;
 class NeovimConnectorHelper;
 class NeovimConnector: public QObject
 {
-	friend class Neovim;
+	friend class NeovimApi0;
+	friend class NeovimApi1;
+	friend class NeovimApi2;
 	friend class NeovimConnectorHelper;
 	Q_OBJECT
 	/**
@@ -65,18 +68,20 @@ public:
 	NeovimError errorCause();
 	QString errorString();
 
-	// FIXME: remove this
-	MsgpackRequest* attachUi(int64_t width, int64_t height);
-	void detachUi();
-
 	bool isReady();
-	Neovim* neovimObject();
+	NeovimApi0 * api0();
+	NeovimApi1 * neovimObject();
+	NeovimApi1 * api1();
+	NeovimApi2 * api2();
 	uint64_t channel();
 	QString decode(const QByteArray&);
 	QByteArray encode(const QString&);
 	NeovimConnectionType connectionType();
 	/** Some requests for metadata and ui attachment enforce a timeout in ms */
 	void setRequestTimeout(int);
+
+	quint64 apiCompatibility();
+	quint64 apiLevel();
 
 signals:
 	/** Emitted when Neovim is ready @see ready */
@@ -103,8 +108,12 @@ private:
 	QString m_errorString;
 	NeovimError m_error;
 
-	Neovim *m_neovimobj;
+	NeovimApi0 *m_api0;
+	NeovimApi1 *m_api1;
+	NeovimApi2 *m_api2;
 	quint64 m_channel;
+	quint64 m_api_compat;
+	quint64 m_api_supported;
 
 	// Store connection arguments for reconnect()
 	NeovimConnectionType m_ctype;

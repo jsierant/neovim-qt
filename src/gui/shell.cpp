@@ -14,7 +14,7 @@
 
 namespace NeovimQt {
 
-Shell::Shell(NeovimConnector *nvim, QWidget *parent)
+Shell::Shell(NeovimConnector *nvim, ShellOptions opts, QWidget *parent)
 :ShellWidget(parent), m_attached(false), m_nvim(nvim),
 	m_font_bold(false), m_font_italic(false), m_font_underline(false), m_font_undercurl(false),
 	m_mouseHide(true),
@@ -23,6 +23,7 @@ Shell::Shell(NeovimConnector *nvim, QWidget *parent)
 	m_resizing(false),
 	m_mouse_wheel_delta_fraction(0, 0),
 	m_neovimBusy(false),
+	m_options(opts),
   m_popupmenu(this, [this]{ return cellSize(); }),
   m_signature(this, [this]{ return cellSize(); }, [this] { return m_cursor_pos; })
 {
@@ -65,7 +66,7 @@ Shell::Shell(NeovimConnector *nvim, QWidget *parent)
 void Shell::fontError(const QString& msg)
 {
 	if (m_attached) {
-		m_nvim->neovimObject()->vim_report_error(m_nvim->encode(msg));
+		m_nvim->api0()->vim_report_error(m_nvim->encode(msg));
 	}
 }
 
@@ -90,7 +91,7 @@ bool Shell::setGuiFont(const QString& fdesc, bool force)
 {
 	QStringList attrs = fdesc.split(':');
 	if (attrs.size() < 1) {
-		m_nvim->neovimObject()->vim_report_error("Invalid font");
+		m_nvim->api0()->vim_report_error("Invalid font");
 		return false;
 	}
 
@@ -102,7 +103,7 @@ bool Shell::setGuiFont(const QString& fdesc, bool force)
 			bool ok = false;
 			int height = attr.mid(1).toInt(&ok);
 			if (!ok) {
-				m_nvim->neovimObject()->vim_report_error("Invalid font height");
+				m_nvim->api0()->vim_report_error("Invalid font height");
 				return false;
 			}
 			pointSize = height;
@@ -117,7 +118,7 @@ bool Shell::setGuiFont(const QString& fdesc, bool force)
 	bool ok = setShellFont(attrs.at(0), pointSize, weight, italic, force);
 	if (ok && m_attached) {
 		resizeNeovim(size());
-		m_nvim->neovimObject()->vim_set_var("GuiFont", fontDesc());
+		m_nvim->api0()->vim_set_var("GuiFont", fontDesc());
 	}
 
 	return ok;
@@ -126,7 +127,7 @@ bool Shell::setGuiFont(const QString& fdesc, bool force)
 Shell::~Shell()
 {
 	if (m_nvim && m_attached) {
-		m_nvim->detachUi();
+		m_nvim->api0()->ui_detach();
 	}
 }
 
@@ -135,13 +136,13 @@ void Shell::setAttached(bool attached)
 	m_attached = attached;
 	if (attached) {
 		updateWindowId();
-		m_nvim->neovimObject()->vim_set_var("GuiFont", fontDesc());
+		m_nvim->api0()->vim_set_var("GuiFont", fontDesc());
 
 		if (isWindow()) {
 			updateGuiWindowState(windowState());
 		}
-		m_nvim->neovimObject()->vim_command("runtime plugin/nvim_gui_shim.vim");
-		m_nvim->neovimObject()->vim_command("runtime! ginit.vim");
+		m_nvim->api0()->vim_command("runtime plugin/nvim_gui_shim.vim");
+		m_nvim->api0()->vim_command("runtime! ginit.vim");
 
 		// Noevim was not able to open urls till now. Check if we have any to open.
 		if(!m_deferredOpen.isEmpty()){
@@ -182,24 +183,43 @@ QRect Shell::neovimCursorRect(QPoint at) const
 
 void Shell::init()
 {
-	if (!m_nvim || !m_nvim->neovimObject()) {
+	// Make sure the connector provides us with an api object
+	if (!m_nvim || !m_nvim->api0()) {
+		emit neovimIsUnsupported();
 		return;
 	}
 
-	connect(m_nvim->neovimObject(), &Neovim::neovimNotification,
+	connect(m_nvim->api0(), &NeovimApi0::neovimNotification,
 			this, &Shell::handleNeovimNotification);
-	connect(m_nvim->neovimObject(), &Neovim::on_ui_try_resize,
+	connect(m_nvim->api0(), &NeovimApi0::on_ui_try_resize,
 			this, &Shell::neovimResizeFinished);
 
 	QRect screenRect = QApplication::desktop()->availableGeometry(this);
-	// FIXME: this API will change
-	MsgpackRequest *req = m_nvim->attachUi(screenRect.width()*0.66/cellSize().width(),
-			screenRect.height()*0.66/cellSize().height());
+	int64_t width = screenRect.width()*0.66/cellSize().width();
+	int64_t height = screenRect.height()*0.66/cellSize().height();
+	QVariantMap options;
+	if (m_options.enable_ext_tabline) {
+		options.insert("ext_tabline", true);
+	}
+  options.insert("ext_popupmenu", true);
+	options.insert("rgb", true);
+
+	MsgpackRequest *req;
+	if (m_nvim->api2()) {
+		req = m_nvim->api2()->nvim_ui_attach(width, height, options);
+	} else {
+		req = m_nvim->api0()->ui_attach(width, height, true);
+	}
+	connect(req, &MsgpackRequest::timeout,
+			m_nvim, &NeovimConnector::fatalTimeout);
+	// FIXME grab timeout from connector
+	req->setTimeout(10000);
+
 	connect(req, &MsgpackRequest::finished,
 			this, &Shell::setAttached);
 
 	// Subscribe to GUI events
-	m_nvim->neovimObject()->vim_subscribe("Gui");
+	m_nvim->api0()->vim_subscribe("Gui");
 }
 
 void Shell::neovimError(NeovimConnector::NeovimError err)
@@ -424,6 +444,30 @@ void Shell::handleRedraw(const QByteArray& name, const QVariantList& opargs)
 	} else if (name == "busy_stop"){
 		handleBusy(false);
 	} else if (name == "set_icon") {
+	} else if (name == "tabline_update") {
+		if (opargs.size() < 2 || !opargs.at(0).canConvert<int64_t>()) {
+			qWarning() << "Unexpected argument for tabline_update:" << opargs;
+			return;
+		}
+		int64_t curtab = opargs.at(0).toInt();
+		QList<Tab> tabs;
+		foreach(const QVariant& tabv, opargs.at(1).toList()) {
+			QVariantMap tab = tabv.toMap();
+
+			if (!tab.contains("tab") || !tab.contains("name")) {
+				qWarning() << "Unexpected tab value in tabline_update:" << tab;
+			}
+
+			int64_t num = tab.value("tab").toInt();
+			QString name = tab.value("name").toString();
+			tabs.append(Tab(num, name));
+		}
+
+		emit neovimTablineUpdate(curtab, tabs);
+	} else if (name == "option_set") {
+		if (2 <= opargs.size()) {
+			handleSetOption(opargs.at(0).toString(), opargs.at(1));
+		}
 	} else if (name == "popupmenu_show") {
     return m_popupmenu.show(opargs);
 	} else if (name == "popupmenu_select") {
@@ -507,14 +551,16 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
 				emit neovimFullScreen(variant_not_zero(args.at(1)));
 			}
 		} else if (guiEvName == "Linespace" && args.size() == 2) {
-			auto val = args.at(1).toUInt();
+			// The conversion to string and then to int happens because of http://doc.qt.io/qt-5/qvariant.html#toUInt
+			// toUint() fails to detect an overflow i.e. it converts to ulonglong and then returns a MAX UINT
+			auto val = args.at(1).toString().toInt();
 			setLineSpace(val);
-			m_nvim->neovimObject()->vim_set_var("GuiLinespace", val);
+			m_nvim->api0()->vim_set_var("GuiLinespace", val);
 			resizeNeovim(size());
 		} else if (guiEvName == "Mousehide" && args.size() == 2) {
 			m_mouseHide = variant_not_zero(args.at(1));
 			int val = m_mouseHide ? 1 : 0;
-			m_nvim->neovimObject()->vim_set_var("GuiMousehide", val);
+			m_nvim->api0()->vim_set_var("GuiMousehide", val);
 		} else if (guiEvName == "Close" && args.size() == 1) {
 			qDebug() << "Neovim requested a GUI close";
 			emit neovimGuiCloseRequest();
@@ -558,6 +604,21 @@ void Shell::handleNeovimNotification(const QByteArray &name, const QVariantList&
 			const QVariantList& opargs = opargs_var.toList();
 			handleRedraw(name, opargs);
 		}
+	}
+}
+
+void Shell::handleSetOption(const QString& name, const QVariant& value)
+{
+	if (name == "guifont") {
+		setGuiFont(value.toString());
+	} else if (name == "guifontset") {
+	} else if (name == "guifontwide") {
+	} else if (name == "linespace") {
+		// The conversion to string and then to int happens because of http://doc.qt.io/qt-5/qvariant.html#toUInt
+		// toUint() fails to detect an overflow i.e. it converts to ulonglong and then returns a MAX UINT
+		setLineSpace(value.toString().toInt());
+	} else {
+		qDebug() << "Received unknown option" << name << value;
 	}
 }
 
@@ -607,12 +668,16 @@ void Shell::keyPressEvent(QKeyEvent *ev)
 		return;
 	}
 
-	m_nvim->neovimObject()->vim_input(m_nvim->encode(inp));
+	m_nvim->api0()->vim_input(m_nvim->encode(inp));
 	// FIXME: bytes might not be written, and need to be buffered
 }
 
 void Shell::neovimMouseEvent(QMouseEvent *ev)
 {
+	if (!m_attached) {
+		return;
+	}
+
 	QPoint pos(ev->x()/cellSize().width(),
 			ev->y()/cellSize().height());
 	QString inp;
@@ -635,7 +700,7 @@ void Shell::neovimMouseEvent(QMouseEvent *ev)
 	if (inp.isEmpty()) {
 		return;
 	}
-	m_nvim->neovimObject()->vim_input(inp.toLatin1());
+	m_nvim->api0()->vim_input(inp.toLatin1());
 }
 void Shell::mousePressEvent(QMouseEvent *ev)
 {
@@ -687,6 +752,9 @@ void Shell::mouseMoveEvent(QMouseEvent *ev)
 
 void Shell::wheelEvent(QWheelEvent *ev)
 {
+	if (!m_attached) {
+		return;
+	}
 #ifdef Q_OS_MAC
 	// For some reason <ScrollWheel*> scrolls multiple lines at once
 	// we have to account for it, to make sure that pixelDelta() is used correctly.
@@ -730,7 +798,7 @@ void Shell::wheelEvent(QWheelEvent *ev)
 			.arg(horiz > 0 ? "Left" : "Right")
 			.arg(pos.x()).arg(pos.y());
 	}
-	m_nvim->neovimObject()->vim_input(inp.toLatin1());
+	m_nvim->api0()->vim_input(inp.toLatin1());
 }
 
 void Shell::updateWindowId()
@@ -738,7 +806,7 @@ void Shell::updateWindowId()
 	if (m_attached &&
 		m_nvim->connectionType() == NeovimConnector::SpawnedConnection) {
 		WId window_id = effectiveWinId();
-		m_nvim->neovimObject()->vim_set_var("GuiWindowId", QVariant(window_id));
+		m_nvim->api0()->vim_set_var("GuiWindowId", QVariant(window_id));
 	}
 }
 
@@ -775,7 +843,7 @@ void Shell::resizeNeovim(int n_cols, int n_rows)
 	if (m_resizing) {
 		m_resize_neovim_pending = QSize(n_cols, n_rows);
 	} else {
-		m_nvim->neovimObject()->ui_try_resize(n_cols, n_rows);
+		m_nvim->api0()->ui_try_resize(n_cols, n_rows);
 		m_resizing = true;
 	}
 }
@@ -820,14 +888,14 @@ void Shell::updateGuiWindowState(Qt::WindowStates state)
 		return;
 	}
 	if (state & Qt::WindowMaximized) {
-		m_nvim->neovimObject()->vim_set_var("GuiWindowMaximized", 1);
+		m_nvim->api0()->vim_set_var("GuiWindowMaximized", 1);
 	} else {
-		m_nvim->neovimObject()->vim_set_var("GuiWindowMaximized", 0);
+		m_nvim->api0()->vim_set_var("GuiWindowMaximized", 0);
 	}
 	if (state & Qt::WindowFullScreen) {
-		m_nvim->neovimObject()->vim_set_var("GuiWindowFullScreen", 1);
+		m_nvim->api0()->vim_set_var("GuiWindowFullScreen", 1);
 	} else {
-		m_nvim->neovimObject()->vim_set_var("GuiWindowFullScreen", 0);
+		m_nvim->api0()->vim_set_var("GuiWindowFullScreen", 0);
 	}
 }
 
@@ -838,7 +906,7 @@ void Shell::closeEvent(QCloseEvent *ev)
 		// If attached to a spawned Neovim process, ignore the event
 		// and try to close Neovim as :qa
 		ev->ignore();
-		m_nvim->neovimObject()->vim_command("qa");
+		m_nvim->api0()->vim_command("qa");
 	} else {
 		QWidget::closeEvent(ev);
 	}
@@ -846,14 +914,18 @@ void Shell::closeEvent(QCloseEvent *ev)
 
 void Shell::focusInEvent(QFocusEvent *ev)
 {
-	// See neovim-qt/issues/329 the FocusGained key no longer exists, use autocmd instead
-	m_nvim->neovimObject()->vim_command("if exists('#FocusGained') | doautocmd FocusGained | endif");
+	if (m_attached) {
+		// See neovim-qt/issues/329 the FocusGained key no longer exists, use autocmd instead
+		m_nvim->api0()->vim_command("if exists('#FocusGained') | doautocmd FocusGained | endif");
+	}
 	QWidget::focusInEvent(ev);
 }
 
 void Shell::focusOutEvent(QFocusEvent *ev)
 {
-	m_nvim->neovimObject()->vim_command("if exists('#FocusLost') | doautocmd FocusLost | endif");
+	if (m_attached) {
+		m_nvim->api0()->vim_command("if exists('#FocusLost') | doautocmd FocusLost | endif");
+	}
 	QWidget::focusOutEvent(ev);
 }
 
@@ -894,9 +966,12 @@ void Shell::tooltip(const QString& text)
 
 void Shell::inputMethodEvent(QInputMethodEvent *ev)
 {
+	if (!m_attached) {
+		return;
+	}
 	if ( !ev->commitString().isEmpty() ) {
 		QByteArray s = m_nvim->encode(ev->commitString());
-		m_nvim->neovimObject()->vim_input(s);
+		m_nvim->api0()->vim_input(s);
 		tooltip("");
 	} else {
 		tooltip(ev->preeditString());
@@ -1031,7 +1106,7 @@ void Shell::openFiles(QList<QUrl> urls)
 				args.append(u.toString());
 			}
 		}
-		m_nvim->neovimObject()->vim_call_function("GuiDrop", args);
+		m_nvim->api0()->vim_call_function("GuiDrop", args);
 	} else {
 		// Neovim cannot open urls now. Store them to open later.
 		m_deferredOpen.append(urls);
