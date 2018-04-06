@@ -117,45 +117,45 @@ QString joinRange(QVector<QString> const& list,
 
 QString makeSigText(
     Signature::SigInfo const& signature,
-    Signature::SeperationChars const& sep) {
-  auto seperator = QString("%1 ").arg(sep[2]);
+    Signature::Seperators const& sep) {
+  auto seperator = QString("%1 ").arg(sep.sep);
   auto text = QString("%1%2%3%4")
     .arg(signature.label)
-    .arg(sep[0])
+    .arg(sep.start)
     .arg(join(signature.params, seperator))
-    .arg(sep[1]);
+    .arg(sep.stop);
   return text;
 }
 
 QString makeActiveSigText(
     Signature::SigInfo const& signature,
-    Signature::SeperationChars const& sep,
+    Signature::Seperators const& sep,
     int active_param) {
   if(active_param < 0) {
     return makeSigText(signature, sep);
   }
-  auto seperator = QString("%1 ").arg(sep[2]);
+  auto seperator = QString("%1 ").arg(sep.sep);
   auto text = QString("%1%2%3%4%5%6%7%8")
     .arg(signature.label)
-    .arg(sep[0])
+    .arg(sep.start)
     .arg(joinRange(signature.params, seperator, 0, active_param))
     .arg(active_param > 0 ? seperator : "")
     .arg(QString("<font style=\"text-decoration:underline\" color=\"red\">%1</font>")
         .arg(signature.params[active_param]))
     .arg(active_param + 1 < signature.params.size() ? seperator : "")
     .arg(joinRange(signature.params, seperator, active_param + 1, signature.params.size()))
-    .arg(sep[1]);
+    .arg(sep.stop);
   return text;
 }
 
 void Signature::show(QVector<SigInfo> const& signatures,
       int active_signature,
       int active_param,
-      SeperationChars const& sep) {
+      Seperators const& sep) {
 
   widget->clear();
-  addItemsToWidget(signatures, 
-      active_signature, 
+  addItemsToWidget(signatures,
+      active_signature,
       active_param, sep);
   moveAndShowWidget();
 }
@@ -164,7 +164,7 @@ void Signature::addItemsToWidget(
     QVector<SigInfo> const& signatures,
     int active_signature,
     int active_param,
-    SeperationChars const& sep) {
+    Seperators const& sep) {
   for(auto idx = 0; idx < signatures.size(); idx++) {
     auto text = (idx != active_signature) ?
       makeSigText(signatures[idx], sep) :
@@ -209,6 +209,17 @@ Signature::SigInfo toSigInfo(QVariantMap const& from) {
   return sig;
 }
 
+Signature::Seperators toSeperators(QVariantMap const& from) {
+  if(!from.contains("start") || !from.contains("stop") || !from.contains("sep")) {
+    throw ConversionError("Missing mandatory values in seperators");
+  }
+  Signature::Seperators sep;
+  sep.start = getValue<QString>(from["start"]);
+  sep.stop = getValue<QString>(from["stop"]);
+  sep.sep = getValue<QString>(from["sep"]);
+  return sep;
+}
+
 void SignatureDecoding::show(QVariantList const& args) {
   if(args.size() != 5) {
     qWarning() << "Invalid number of args: expected 4, received: " << args.size()-1;
@@ -219,7 +230,7 @@ void SignatureDecoding::show(QVariantList const& args) {
           [](QVariant const& val){ return toSigInfo(getValue<QVariantMap>(val)); }),
         getValue<int>(args[2]),
         getValue<int>(args[3]),
-        toVect<QString>(getValue<QVariantList>(args[4])));
+        toSeperators(getValue<QVariantMap>(args[4])));
   } catch (ConversionError const& e) {
     qWarning() << "Failed to parse signature show args: " << args << ", what: " << e.what();
   }

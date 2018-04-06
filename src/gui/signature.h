@@ -22,7 +22,13 @@ public:
       GetCellSize,
       GetCursorPos);
 
-  using SeperationChars = QVector<QString>;
+
+  struct Seperators {
+    QString start;
+    QString stop;
+    QString sep;
+  };
+
   using StyleDef = QMap<QString, QString>;
 
   struct SigInfo {
@@ -33,7 +39,7 @@ public:
   void show(QVector<SigInfo> const&,
       int active_signature,
       int active_param,
-      SeperationChars const&);
+      Seperators const&);
 
   void hide();
   void setStyle(StyleDef const&);
@@ -44,7 +50,7 @@ private:
       QVector<SigInfo> const&,
       int active_signature,
       int active_param,
-      SeperationChars const&);
+      Seperators const&);
 
   QWidget* parent;
   LabelVList* widget;
