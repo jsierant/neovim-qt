@@ -26,6 +26,7 @@ add_library(neovim-qt-gui shell.cpp input.cpp errorwidget.cpp mainwindow.cpp app
   ${CMAKE_SOURCE_DIR}/third-party/konsole_wcwidth.cpp
   ${NEOVIM_RCC_SOURCES})
 target_link_libraries(neovim-qt-gui qshellwidget neovim-qt)
+target_compile_options(neovim-qt-gui PUBLIC -std=c++17)
 
 if(NOT APPLE)
 	set_property(SOURCE app.cpp PROPERTY COMPILE_DEFINITIONS

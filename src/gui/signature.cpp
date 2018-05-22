@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QFrame>
 #include <QObjectCleanupHandler>
 #include <memory>
 
@@ -19,7 +20,7 @@ class LabelVList {
 public:
   LabelVList(QWidget* p)
     : parent(p),
-      widget(new QWidget(p)),
+      widget(new QFrame(p)),
       layout(new QVBoxLayout(widget)),
       size(0, 0) {
     widget->hide();
@@ -31,21 +32,33 @@ public:
           "color: %1"
           "; background-color: %2")
         .arg("#fdf4c1")
-        .arg("#393939") );
+        .arg("#494949") );
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
     widget->setLayout(layout);
+    widget->setLineWidth(0);
   }
 
-  void addItem(QString const& text,
+  QFrame* createSeperator() {
+    auto* line = new QFrame(widget);
+    line->setFrameShape(QFrame::HLine); // Horizontal line
+    line->setFrameShadow(QFrame::Plain);
+    line->setLineWidth(1);
+    return line;
+  }
+
+  void addItem(QString const& text, bool last,
       Qt::TextFormat format = Qt::RichText) {
     auto* label = new QLabel(text);
+    label->setFrameStyle(QFrame::Panel | QFrame::Raised);
+
     auto font = parent->font();
     label->setFont(font);
     label->setTextFormat(format);
     layout->addWidget(label);
     auto fm = QFontMetrics(font);
     size = QSize(std::max(size.width(), label->minimumSizeHint().width()),
-                 fm.height() + size.height());
+                 fm.height() + size.height()+3);
   }
 
   void clear() {
@@ -76,8 +89,9 @@ public:
 
 private:
   QWidget* parent;
-  QWidget* widget;
+  QFrame* widget;
   QVBoxLayout* layout;
+  QFrame* frame;
   QSize size;
 };
 
@@ -169,13 +183,13 @@ void Signature::addItemsToWidget(
     auto text = (idx != active_signature) ?
       makeSigText(signatures[idx], sep) :
       makeActiveSigText(signatures[idx], sep, active_param);
-    widget->addItem(text);
+    widget->addItem(text, idx == signatures.size()-1);
   }
 }
 
 void Signature::moveAndShowWidget() {
   if(!widget->isVisible()) {
-    static auto const offset = 2u;
+    static auto const offset = 6u;
     auto cellSize = getCellSize();
     auto cursorPos = getCursorPos();
     widget->move(cursorPos.x()*cellSize.width(),

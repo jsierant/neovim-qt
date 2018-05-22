@@ -11,9 +11,11 @@ endif()
 # 		"${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 # 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -std=c++14 -Wfatal-errors")
 # endif()
+
 add_compile_options(
-  "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wno-unused-parameter;-std=c++14;-Wfatal-errors>"
+  "$<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wno-unused-parameter;-Wfatal-errors>"
 )
+
 option(USE_GCOV "Enable gcov support" OFF)
 if(USE_GCOV)
 	message(STATUS "Enabling coverage")
@@ -93,5 +95,4 @@ if (PYTHONINTERP_FOUND)
 		COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/bindings/generate_bindings.py ${NVIM}
 		)
 endif()
-
 
