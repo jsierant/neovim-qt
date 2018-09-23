@@ -1,31 +1,268 @@
-# This is a minimal CMake project to fetch and build third party
-# dependencies
-cmake_minimum_required(VERSION 2.8.11)
-project(neovim-qt-deps)
+# This is not meant to be included by the top-level.
+cmake_minimum_required (VERSION 2.8.12)
+project(NVIM_DEPS)
 
-#
-# Get Msgpack
-#
-set(MSGPACK_VERSION 2.1.3)
-set(MSGPACK_URL https://github.com/msgpack/msgpack-c/archive/cpp-${MSGPACK_VERSION}.tar.gz)
-set(MSGPACK_SHA256 42ff5c213fd24bd4388c45c1f21d84b476678ce6366ea4d4f4086618a1d2cd23)
+# Needed for: check_c_compiler_flag()
+include(CheckCCompilerFlag)
 
-message(STATUS "Downloading Msgpack...")
-set(MSGPACK_TARBALL msgpack-${MSGPACK_VERSION}.tar.gz)
-file(DOWNLOAD ${MSGPACK_URL} ${CMAKE_CURRENT_SOURCE_DIR}/${MSGPACK_TARBALL}
-	INACTIVITY_TIMEOUT 30
-	EXPECTED_HASH SHA256=${MSGPACK_SHA256})
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar xfz ${MSGPACK_TARBALL}
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	RESULT_VARIABLE rv)
-if(NOT rv EQUAL 0)
-  message(FATAL_ERROR "Failed to extract ${MSGPACK_TARBALL}")
+# Point CMake at any custom modules we may ship
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
+# In Windows/MSVC CMAKE_BUILD_TYPE changes the paths/linking of the build
+# recipes (libuv, msgpack), make sure it is set
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR})
-set(MSGPACK_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/msgpack-c-cpp-${MSGPACK_VERSION}/)
-add_subdirectory(${MSGPACK_SOURCE_DIR} EXCLUDE_FROM_ALL)
+set(DEFAULT_MAKE_CFLAGS CFLAGS+=-g)
 
-# Similar enough to FindMsgpack
-set(MSGPACK_INCLUDE_DIRS ${MSGPACK_SOURCE_DIR}/include PARENT_SCOPE)
-set(MSGPACK_LIBRARIES msgpackc-static PARENT_SCOPE)
+check_c_compiler_flag(-Og HAS_OG_FLAG)
+if(HAS_OG_FLAG)
+  set(DEFAULT_MAKE_CFLAGS CFLAGS+=-Og ${DEFAULT_MAKE_CFLAGS})
+endif()
+
+set(DEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/usr" CACHE PATH "Dependencies install directory.")
+set(DEPS_BIN_DIR "${DEPS_INSTALL_DIR}/bin" CACHE PATH "Dependencies binary install directory.")
+set(DEPS_LIB_DIR "${DEPS_INSTALL_DIR}/lib" CACHE PATH "Dependencies library install directory.")
+set(DEPS_BUILD_DIR "${CMAKE_BINARY_DIR}/build" CACHE PATH "Dependencies build directory.")
+set(DEPS_DOWNLOAD_DIR "${DEPS_BUILD_DIR}/downloads" CACHE PATH "Dependencies download directory.")
+
+option(USE_BUNDLED "Use bundled dependencies." ON)
+
+option(USE_BUNDLED_GPERF "Use the bundled version of gperf." ${USE_BUNDLED})
+option(USE_BUNDLED_JEMALLOC "Use the bundled jemalloc." ${USE_BUNDLED})
+option(USE_BUNDLED_UNIBILIUM "Use the bundled unibilium." ${USE_BUNDLED})
+option(USE_BUNDLED_LIBTERMKEY "Use the bundled libtermkey." ${USE_BUNDLED})
+option(USE_BUNDLED_LIBVTERM "Use the bundled libvterm." ${USE_BUNDLED})
+option(USE_BUNDLED_LIBUV "Use the bundled libuv." ${USE_BUNDLED})
+option(USE_BUNDLED_MSGPACK "Use the bundled msgpack." ${USE_BUNDLED})
+option(USE_BUNDLED_LUAJIT "Use the bundled version of luajit." ${USE_BUNDLED})
+option(USE_BUNDLED_LUAROCKS "Use the bundled version of luarocks." ${USE_BUNDLED})
+option(USE_BUNDLED_LUV "Use the bundled version of luv." ${USE_BUNDLED})
+#XXX(tarruda): Lua is only used for debugging the functional test client, no
+# build it unless explicitly requested
+option(USE_BUNDLED_LUA "Use the bundled version of lua." OFF)
+
+if(USE_BUNDLED AND MSVC)
+  option(USE_BUNDLED_GETTEXT "Use the bundled version of gettext." ON)
+  option(USE_BUNDLED_LIBICONV "Use the bundled version of libiconv." ON)
+else()
+  option(USE_BUNDLED_GETTEXT "Use the bundled version of gettext." OFF)
+  option(USE_BUNDLED_LIBICONV "Use the bundled version of libiconv." OFF)
+endif()
+
+option(USE_EXISTING_SRC_DIR "Skip download of deps sources in case of existing source directory." OFF)
+
+if(WIN32)
+  find_package(Git)
+  if(NOT Git_FOUND)
+    message(FATAL_ERROR "Git is required to apply patches for Windows.")
+  endif()
+endif()
+
+if(UNIX)
+  find_program(MAKE_PRG NAMES gmake make)
+  if(MAKE_PRG)
+    execute_process(
+      COMMAND "${MAKE_PRG}" --version
+      OUTPUT_VARIABLE MAKE_VERSION_INFO)
+    if(NOT "${OUTPUT_VARIABLE}" MATCHES ".*GNU.*")
+      unset(MAKE_PRG)
+    endif()
+  endif()
+  if(NOT MAKE_PRG)
+    message(FATAL_ERROR "GNU Make is required to build the dependencies.")
+  else()
+    message(STATUS "Found GNU Make at ${MAKE_PRG}")
+  endif()
+endif()
+
+# When using make, use the $(MAKE) variable to avoid warning about the job
+# server.
+if(CMAKE_GENERATOR MATCHES "Makefiles")
+  set(MAKE_PRG "$(MAKE)")
+endif()
+
+if(MINGW AND CMAKE_GENERATOR MATCHES "Ninja")
+  find_program(MAKE_PRG NAMES mingw32-make)
+  if(NOT MAKE_PRG)
+    message(FATAL_ERROR "GNU Make for mingw32 is required to build the dependecies.")
+  else()
+    message(STATUS "Found GNU Make for mingw32 at ${MAKE_PRG}")
+  endif()
+endif()
+
+if(CMAKE_C_COMPILER_ARG1)
+  set(DEPS_C_COMPILER "${CMAKE_C_COMPILER} ${CMAKE_C_COMPILER_ARG1}")
+else()
+  set(DEPS_C_COMPILER "${CMAKE_C_COMPILER}")
+endif()
+
+# Cross compiling: use these for dependencies built for the
+# HOST system, when not crosscompiling these should be the
+# same as DEPS_*. Except when targeting Unix in which case
+# want all the dependencies to use the same compiler.
+if(CMAKE_CROSSCOMPILING AND NOT UNIX)
+  set(HOSTDEPS_INSTALL_DIR "${CMAKE_BINARY_DIR}/host")
+  set(HOSTDEPS_BIN_DIR "${HOSTDEPS_INSTALL_DIR}/bin")
+  set(HOSTDEPS_LIB_DIR "${HOSTDEPS_INSTALL_DIR}/lib")
+  set(HOSTDEPS_C_COMPILER "${HOST_C_COMPILER}")
+else()
+  set(HOSTDEPS_INSTALL_DIR "${DEPS_INSTALL_DIR}")
+  set(HOSTDEPS_BIN_DIR "${DEPS_BIN_DIR}")
+  set(HOSTDEPS_LIB_DIR "${DEPS_LIB_DIR}")
+  set(HOSTDEPS_C_COMPILER "${DEPS_C_COMPILER}")
+endif()
+
+include(ExternalProject)
+
+set(LIBUV_URL https://github.com/libuv/libuv/archive/v1.12.0.tar.gz)
+set(LIBUV_SHA256 41ce914a88da21d3b07a76023beca57576ca5b376c6ac440c80bc581cbca1250)
+
+set(MSGPACK_URL https://github.com/msgpack/msgpack-c/releases/download/cpp-3.0.0/msgpack-3.0.0.tar.gz)
+set(MSGPACK_SHA256 bfbb71b7c02f806393bc3cbc491b40523b89e64f83860c58e3e54af47de176e4)
+
+set(LUAJIT_URL https://github.com/LuaJIT/LuaJIT/archive/7dbf0b05f1228c1c719866db5e5f3d58f87f74c8.tar.gz)
+set(LUAJIT_SHA256 cbae019b5e396164eb5f0d07777b55cc03931bb944f83c61a010c053c9f5fd5b)
+
+set(LUA_URL https://www.lua.org/ftp/lua-5.1.5.tar.gz)
+set(LUA_SHA256 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333)
+
+# NOTE: Version must match LUAROCKS_VERSION in third-party/cmake/BuildLuarocks.cmake
+set(LUAROCKS_URL https://github.com/luarocks/luarocks/archive/v2.4.4.tar.gz)
+set(LUAROCKS_SHA256 9eb3d0738fd02ad8bf39bcedccac4e83e9b5fff2bcca247c3584b925b2075d9c)
+
+set(UNIBILIUM_URL https://github.com/mauke/unibilium/archive/v2.0.0.tar.gz)
+set(UNIBILIUM_SHA256 78997d38d4c8177c60d3d0c1aa8c53fd0806eb21825b7b335b1768d7116bc1c1)
+
+set(LIBTERMKEY_URL http://www.leonerd.org.uk/code/libtermkey/libtermkey-0.20.tar.gz)
+set(LIBTERMKEY_SHA256 6c0d87c94ab9915e76ecd313baec08dedf3bd56de83743d9aa923a081935d2f5)
+
+set(LIBVTERM_URL https://github.com/neovim/libvterm/archive/3f62ac6b7bdffda39d68f723fb1806dfd6d6382d.tar.gz)
+set(LIBVTERM_SHA256 1c8b318370f00f831f43e3ec86a48984250e3ee5c76beb106a421c9a42286ac5)
+
+set(JEMALLOC_URL https://github.com/jemalloc/jemalloc/releases/download/5.1.0/jemalloc-5.1.0.tar.bz2)
+set(JEMALLOC_SHA256 5396e61cc6103ac393136c309fae09e44d74743c86f90e266948c50f3dbb7268)
+
+set(LUV_URL https://github.com/luvit/luv/archive/1.9.1-1.tar.gz)
+set(LUV_SHA256 562b9efaad30aa051a40eac9ade0c3df48bb8186763769abe47ec3fb3edb1268)
+
+set(GPERF_URL https://github.com/neovim/deps/raw/ff5b4b18a87397a8564016071ae64f64bcd8c635/opt/gperf-3.1.tar.gz)
+set(GPERF_SHA256 588546b945bba4b70b6a3a616e80b4ab466e3f33024a352fc2198112cdbb3ae2)
+
+# 7za.exe cat.exe curl.exe ca-bundle.crt diff.exe tee.exe tidy.exe xxd.exe
+set(WINTOOLS_URL https://github.com/neovim/deps/raw/2f9acbecf06365c10baa3c0087f34a54c9c6f949/opt/win32tools.zip)
+set(WINTOOLS_SHA256 8bfce7e3a365721a027ce842f2ec1cf878f1726233c215c05964aac07300798c)
+
+set(WINGUI_URL https://github.com/equalsraf/neovim-qt/releases/download/v0.2.10/neovim-qt.zip)
+set(WINGUI_SHA256 97988a96994b6066ea2b5f035a633304d664b8a14c91e946c5833a6e3782fdbb)
+
+set(WIN32YANK_X86_URL https://github.com/equalsraf/win32yank/releases/download/v0.0.4/win32yank-x86.zip)
+set(WIN32YANK_X86_SHA256 62f34e5a46c5d4a7b3f3b512e1ff7b77fedd432f42581cbe825233a996eed62c)
+set(WIN32YANK_X86_64_URL https://github.com/equalsraf/win32yank/releases/download/v0.0.4/win32yank-x64.zip)
+set(WIN32YANK_X86_64_SHA256 33a747a92da60fb65e668edbf7661d3d902411a2d545fe9dc08623cecd142a20)
+
+set(WINPTY_URL https://github.com/rprichard/winpty/releases/download/0.4.3/winpty-0.4.3-msvc2015.zip)
+set(WINPTY_SHA256 35a48ece2ff4acdcbc8299d4920de53eb86b1fb41e64d2fe5ae7898931bcee89)
+
+set(GETTEXT_URL https://ftp.gnu.org/pub/gnu/gettext/gettext-0.19.8.1.tar.gz)
+set(GETTEXT_SHA256 ff942af0e438ced4a8b0ea4b0b6e0d6d657157c5e2364de57baa279c1c125c43)
+
+set(LIBICONV_URL https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz)
+set(LIBICONV_SHA256 ccf536620a45458d26ba83887a983b96827001e92a13847b45e4925cc8913178)
+
+if(USE_BUNDLED_UNIBILIUM)
+  include(BuildUnibilium)
+endif()
+
+if(USE_BUNDLED_LIBTERMKEY)
+  include(BuildLibtermkey)
+endif()
+
+if(USE_BUNDLED_LIBVTERM)
+  include(BuildLibvterm)
+endif()
+
+if(USE_BUNDLED_LIBUV)
+  include(BuildLibuv)
+endif()
+
+if(USE_BUNDLED_MSGPACK)
+  include(BuildMsgpack)
+endif()
+
+if(USE_BUNDLED_LUAJIT)
+  include(BuildLuajit)
+endif()
+
+if(USE_BUNDLED_LUA AND NOT CMAKE_CROSSCOMPILING)
+  include(BuildLua)
+endif()
+
+if(USE_BUNDLED_LUAROCKS)
+  include(BuildLuarocks)
+endif()
+
+if(USE_BUNDLED_JEMALLOC)
+  include(BuildJeMalloc)
+endif()
+
+if(USE_BUNDLED_LUV)
+  include(BuildLuv)
+endif()
+
+if(USE_BUNDLED_GPERF)
+  include(BuildGperf)
+endif()
+
+if(USE_BUNDLED_GETTEXT)
+  include(BuildGettext)
+endif()
+
+if(USE_BUNDLED_LIBICONV)
+  include(BuildLibiconv)
+endif()
+
+include(GetBinaryDeps)
+
+if(WIN32)
+  GetBinaryDep(TARGET wintools
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory . ${DEPS_INSTALL_DIR}/bin)
+
+  GetBinaryDep(TARGET wingui
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory bin ${DEPS_INSTALL_DIR}/bin
+      COMMAND ${CMAKE_COMMAND} -E copy_directory share ${DEPS_INSTALL_DIR}/share)
+
+  include(TargetArch)
+  GetBinaryDep(TARGET "win32yank_${TARGET_ARCH}"
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy win32yank.exe ${DEPS_INSTALL_DIR}/bin)
+
+  if("${TARGET_ARCH}" STREQUAL "X86_64")
+    set(TARGET_ARCH x64)
+  elseif(TARGET_ARCH STREQUAL "X86")
+    set(TARGET_ARCH ia32)
+  endif()
+
+  GetBinaryDep(TARGET winpty
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPS_INSTALL_DIR}/bin
+      COMMAND ${CMAKE_COMMAND} -DFROM_GLOB=${DEPS_BUILD_DIR}/src/winpty/${TARGET_ARCH}/bin/*
+        -DTO=${DEPS_INSTALL_DIR}/bin/
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CopyFilesGlob.cmake
+      COMMAND ${CMAKE_COMMAND} -DFROM_GLOB=${DEPS_BUILD_DIR}/src/winpty/include/*
+        -DTO=${DEPS_INSTALL_DIR}/include/
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CopyFilesGlob.cmake
+      COMMAND ${CMAKE_COMMAND} -DFROM_GLOB=${DEPS_BUILD_DIR}/src/winpty/${TARGET_ARCH}/lib/*
+        -DTO=${DEPS_INSTALL_DIR}/lib/
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CopyFilesGlob.cmake)
+endif()
+
+add_custom_target(clean-shared-libraries
+  COMMAND ${CMAKE_COMMAND}
+    -DREMOVE_FILE_GLOB=${DEPS_INSTALL_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}*${CMAKE_SHARED_LIBRARY_SUFFIX}*
+    -P ${PROJECT_SOURCE_DIR}/cmake/RemoveFiles.cmake
+  DEPENDS ${THIRD_PARTY_DEPS}
+)
+
+add_custom_target(third-party ALL
+  COMMAND ${CMAKE_COMMAND} -E touch .third-party
+  DEPENDS clean-shared-libraries)

@@ -1,87 +1,136 @@
+[![Neovim](https://raw.githubusercontent.com/neovim/neovim.github.io/master/logos/neovim-logo-600x173.png)](https://neovim.io)
 
-Neovim client library and GUI, in Qt5.
+[Wiki](https://github.com/neovim/neovim/wiki) |
+[Documentation](https://neovim.io/doc) |
+[Twitter](https://twitter.com/Neovim) |
+[Community](https://neovim.io/community/) |
+[Gitter **Chat**](https://gitter.im/neovim/neovim)
 
-[![Build Status](https://semaphoreci.com/api/v1/projects/1ca75720-56a2-4573-883b-f90fd6241327/414035/badge.svg)](https://semaphoreci.com/equalsraf/neovim-qt)
-[![Build status](https://ci.appveyor.com/api/projects/status/c252f54mfjcuud8x/branch/master?svg=true)](https://ci.appveyor.com/project/equalsraf/neovim-qt/branch/master)
-[![Build Status](https://travis-ci.org/equalsraf/neovim-qt.svg?branch=master)](https://travis-ci.org/equalsraf/neovim-qt)
-[![Coverage Status](https://coveralls.io/repos/equalsraf/neovim-qt/badge.svg?branch=tb-refactor)](https://coveralls.io/r/equalsraf/neovim-qt)
-[![Downloads](https://img.shields.io/github/downloads/equalsraf/neovim-qt/total.svg?maxAge=2592000)](https://github.com/equalsraf/neovim-qt/releases)
+[![Travis Build Status](https://travis-ci.org/neovim/neovim.svg?branch=master)](https://travis-ci.org/neovim/neovim)
+[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/urdqjrik5u521fac/branch/master?svg=true)](https://ci.appveyor.com/project/neovim/neovim/branch/master)
+[![codecov](https://img.shields.io/codecov/c/github/neovim/neovim.svg)](https://codecov.io/gh/neovim/neovim)
+[![Coverity Scan Build](https://scan.coverity.com/projects/2227/badge.svg)](https://scan.coverity.com/projects/2227)
+[![Clang Scan Build](https://neovim.io/doc/reports/clang/badge.svg)](https://neovim.io/doc/reports/clang)
+[![PVS-studio Check](https://neovim.io/doc/reports/pvs/badge.svg)](https://neovim.io/doc/reports/pvs/PVS-studio.html.d)
 
-## Requirements
+[![Packages](https://repology.org/badge/tiny-repos/neovim.svg)](https://repology.org/metapackage/neovim)
+[![Debian CI](https://badges.debian.net/badges/debian/testing/neovim/version.svg)](https://buildd.debian.org/neovim)
+[![Downloads](https://img.shields.io/github/downloads/neovim/neovim/total.svg?maxAge=2592001)](https://github.com/neovim/neovim/releases/)
 
-* Qt5
-* Neovim
+Neovim is a project that seeks to aggressively refactor Vim in order to:
 
-## Building
+- Simplify maintenance and encourage [contributions](CONTRIBUTING.md)
+- Split the work between multiple developers
+- Enable [advanced UIs] without modifications to the core
+- Maximize [extensibility](https://github.com/neovim/neovim/wiki/Plugin-UI-architecture)
 
-You can build using CMake and your build system of choice. It should build in any
-system where Qt5 and Msgpack can build.
+See [the wiki](https://github.com/neovim/neovim/wiki/Introduction) and [Roadmap]
+for more information.
 
-For Unix call
+[![Throughput Graph](https://graphs.waffle.io/neovim/neovim/throughput.svg)](https://waffle.io/neovim/neovim/metrics)
 
-    $ mkdir build
-    $ cd build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ..
-    $ make
+Features
+--------
 
-for Windows both MSVC and Mingw are supported. Use the following
+- Modern [GUIs](https://github.com/neovim/neovim/wiki/Related-projects#gui)
+- [API](https://github.com/neovim/neovim/wiki/Related-projects#api-clients)
+  access from any language including clojure, lisp, go, haskell, lua,
+  javascript, perl, python, ruby, rust.
+- Embedded, scriptable [terminal emulator](https://neovim.io/doc/user/nvim_terminal_emulator.html)
+- Asynchronous [job control](https://github.com/neovim/neovim/pull/2247)
+- [Shared data (shada)](https://github.com/neovim/neovim/pull/2506) among multiple editor instances
+- [XDG base directories](https://github.com/neovim/neovim/pull/3470) support
+- Compatible with most Vim plugins, including Ruby and Python plugins.
 
-    $ mkdir build
-    $ cd build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ..
-    $ cmake --build .
+See [`:help nvim-features`][nvim-features] for the full list!
 
-For MSVC build you may have to specify the VS version and build type. Always make sure the VS versions matches your Qt libraries.
+Install from source
+-------------------
 
-	$ mkdir build
-	$ cd build
-	$ cmake -G "Visual Studio 14" -DCMAKE_BUILD_TYPE=Release ..
-	$ cmake --build . --config Release --target install
+    make CMAKE_BUILD_TYPE=RelWithDebInfo
+    sudo make install
 
-The binaries will be under build/bin/. The GUI binary is called nvim-qt. Run make install to install it, or execute from the source setting the environment variable NVIM_QT_RUNTIME as the path holding the GUI shim plugin
+To install to a non-default location, set `CMAKE_INSTALL_PREFIX`:
 
-	$ NVIM_QT_RUNTIME_PATH=../src/gui/runtime bin/nvim-qt
+    make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=/full/path/"
+    make install
 
-## Using the GUI
+To list all targets:
 
-Run **nvim-qt**, the **nvim** binary must be in your $PATH. Check `nvim-qt --help` for additional options.
+    cmake --build build --target help
 
-Commands for interacting with the GUI are regular commands, available in the documentation [:help nvim-gui-shim](./src/gui/runtime/doc/nvim_gui_shim.txt). For example to change the font call
+To skip "bundled" dependencies define `USE_BUNDLED_DEPS=NO` (CMake option: `USE_BUNDLED=NO`).
 
-	:Guifont DejaVu Sans Mono:h13
+See [the wiki](https://github.com/neovim/neovim/wiki/Building-Neovim) for details.
 
-You can set GUI options on startup, in the GUI configuration file (:help ginit.vim).
+Install from package
+--------------------
 
-## Development
+Pre-built packages for Windows, macOS, and Linux are found at the
+[Releases](https://github.com/neovim/neovim/releases/) page.
 
-The *NeovimConnector* class is used to setup the connection to Neovim. It also
-provides you with low level methods for RPC - in general you should be using
-the signals/slots in the QObject returned by NeovimConnector::neovimObject()
+Managed packages are in [Homebrew], [Debian], [Ubuntu], [Fedora], [Arch Linux], [Gentoo],
+and [more](https://github.com/neovim/neovim/wiki/Installing-Neovim)!
 
-1. To call a function call the corresponding slot
-2. The result of the call is delivered by the corresponding signal,
-   by convention these signals are named 'on\_' + slot\_name
-3. The Neovim() class is automagically generated from the Neovim
-   metadata
-5. For Neovim functions that take the **Object** type we use **QVariant**
-6. To catch Neovim Notifications connect to the Neovim::neovimNotification
-   signal
+Transitioning from Vim
+--------------------
 
-### To Update the RPC bindings
+See [`:help nvim-from-vim`](https://neovim.io/doc/user/nvim.html#nvim-from-vim) for instructions.
 
-Part of the code is auto-generated by calling Neovim to get the API metadata,
-and generating C++ code. This is done using a python script
-(generate\_bindings.py) if you just want to use neovim-qt as is you don't need
-to worry about this, I already include the generated code in the repository.
+Project layout
+--------------
 
-The bindings source templates are stored under the bindings/ folder the 
-generated code is in src/auto/.
+    ├─ ci/              build automation
+    ├─ cmake/           build scripts
+    ├─ runtime/         user plugins/docs
+    ├─ src/             application source code (see src/nvim/README.md)
+    │  ├─ api/          API subsystem
+    │  ├─ eval/         VimL subsystem
+    │  ├─ event/        event-loop subsystem
+    │  ├─ generators/   code generation (pre-compilation)
+    │  ├─ lib/          generic data structures
+    │  ├─ lua/          lua subsystem
+    │  ├─ msgpack_rpc/  RPC subsystem
+    │  ├─ os/           low-level platform code
+    │  └─ tui/          built-in UI
+    ├─ third-party/     cmake subproject to build dependencies
+    └─ test/            tests (see test/README.md)
 
-To generate the bindings yourself you need
+License
+-------
 
-- python
-- python-msgpack
-- jinja2
+Neovim is licensed under the terms of the Apache 2.0 license, except for
+parts that were contributed under the Vim license.
 
-Just run `make bindings` in Unix or the equivalent build command in Windows.
+- Contributions committed before [b17d96][license-commit] remain under the Vim
+  license.
 
+- Contributions committed after [b17d96][license-commit] are licensed under
+  Apache 2.0 unless those contributions were copied from Vim (identified in
+  the commit logs by the `vim-patch` token).
+
+See `LICENSE` for details.
+
+    Vim is Charityware.  You can use and copy it as much as you like, but you are
+    encouraged to make a donation for needy children in Uganda.  Please see the
+    kcc section of the vim docs or visit the ICCF web site, available at these URLs:
+
+            http://iccf-holland.org/
+            http://www.vim.org/iccf/
+            http://www.iccf.nl/
+
+    You can also sponsor the development of Vim.  Vim sponsors can vote for
+    features.  The money goes to Uganda anyway.
+
+[license-commit]: https://github.com/neovim/neovim/commit/b17d9691a24099c9210289f16afb1a498a89d803
+[nvim-features]: https://neovim.io/doc/user/vim_diff.html#nvim-features
+[Roadmap]: https://neovim.io/roadmap/
+[advanced UIs]: https://github.com/neovim/neovim/wiki/Related-projects#gui
+[Homebrew]: https://github.com/neovim/homebrew-neovim#installation
+[Debian]: https://packages.debian.org/testing/neovim
+[Ubuntu]: http://packages.ubuntu.com/search?keywords=neovim
+[Fedora]: https://admin.fedoraproject.org/pkgdb/package/rpms/neovim
+[Arch Linux]: https://www.archlinux.org/packages/?q=neovim
+[Gentoo]: https://packages.gentoo.org/packages/app-editors/neovim
+
+<!-- vim: set tw=80: -->
